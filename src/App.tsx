@@ -2,6 +2,7 @@ import "@mantine/core/styles.css";
 import { Button, Container, LoadingOverlay, MantineProvider, Stack, Text } from "@mantine/core";
 import { theme } from "./theme";
 import { useState } from "react";
+import MultiQuestionSearchBar from "./components/QuestionSearchBar/QuestionSearchBar";
 
 export default function App() {
   
@@ -25,6 +26,7 @@ export default function App() {
         <Text>Count: {counter}</Text>
         <Button onClick={incrementCounter}>Increment Counter</Button>
       </Stack>
+      <MultiQuestionSearchBar />
     </Container>
 
   </MantineProvider>;
