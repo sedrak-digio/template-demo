@@ -3,33 +3,22 @@ import {
   TextInput,
   Text,
   Button,
-  Stack,
-  Divider,
-  Paper,
-  SimpleGrid,
-  Tooltip,
-  Group,
+  Stack, Paper, Group,
   useMantineTheme,
+  Chip,
 } from '@mantine/core';
-import { IconTrash, IconPlus } from '@tabler/icons-react';
+import { IconPlus } from '@tabler/icons-react'; // Keep this for now
 import ReactMarkdown from 'react-markdown';
 
-interface Question {
-  text: string;
-  result: string;
-}
-
 const MultiQuestionSearchBar: React.FC = () => {
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [questions, setQuestions] = useState<string[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState('');
+  const [searchResults, setSearchResults] = useState<string | null>(null); // State for search results
   const theme = useMantineTheme();
 
   const addQuestion = () => {
     if (currentQuestion.trim() !== '') {
-      setQuestions([
-        ...questions,
-        { text: currentQuestion, result: 'Loading...' },
-      ]);
+      setQuestions([...questions, currentQuestion]);
       setCurrentQuestion('');
     }
   };
@@ -37,6 +26,7 @@ const MultiQuestionSearchBar: React.FC = () => {
   const removeQuestion = (index: number) => {
     const updatedQuestions = [...questions];
     updatedQuestions.splice(index, 1);
+    debugger;
     setQuestions(updatedQuestions);
   };
 
@@ -45,45 +35,42 @@ const MultiQuestionSearchBar: React.FC = () => {
   };
 
   // Replace this with your actual search logic
-  const search = async (question: string) => {
+  const search = async (questions: string[]) => {
     // Simulate a delay for demonstration
     // await new Promise((resolve) => setTimeout(resolve, 1000));
     console.log("Heya!")
     debugger;
-    const responseJson = await(await fetch(`https://australia-southeast2-mg-mantelorians.cloudfunctions.net/queenstown?q=${question}`)).json();
+    const responseJson = await(await fetch(`https://australia-southeast2-mg-mantelorians.cloudfunctions.net/queenstown?q=${questions.join(',')}`)).json();
     console.log(responseJson)
 
     // Replace with your actual search logic
-    return `${responseJson.response}`;
+    return responseJson.response;
   };
 
   const processQuestions = async () => {
-    for (let i = 0; i < questions.length; i++) {
-      const question = questions[i];
-      try {
-        const result = await search(question.text);
-        const updatedQuestions = [...questions];
-        updatedQuestions[i] = { ...question, result };
-        setQuestions(updatedQuestions);
-      } catch (error) {
-        console.error('Error searching:', error);
-        const updatedQuestions = [...questions];
-        updatedQuestions[i] = { ...question, result: 'Error' };
-        setQuestions(updatedQuestions);
-      }
+    try {
+      setSearchResults("Loading... (don't judge me too harshly, I'll get around the the UI in a hot minute!"); // Update search results state
+      const result = await search(questions);
+      setQuestions([]); // Clear the input chips after search
+      setCurrentQuestion('');
+      setSearchResults(result); // Update search results state
+    } catch (error) {
+      console.error('Error searching:', error);
+      setSearchResults('Error'); // Update search results state for error
     }
   };
 
   return (
     <Paper shadow="sm" p="md" radius="md" withBorder>
-      <Text size="lg" weight={700} mb="md">
-       Queenstown suggestion search!
+      <Text size="lg" mb="md">
+        Queenstown suggestion search!
       </Text>
 
-      <Stack spacing="xs">
-        <Group position="apart">
+      <Stack>
+        <Group>
           <TextInput
-            placeholder="Enter your question"
+            width='800'
+            placeholder="Enter your descriptive question"
             value={currentQuestion}
             onChange={handleQuestionChange}
             rightSection={<IconPlus size={16} onClick={addQuestion} />}
@@ -94,33 +81,32 @@ const MultiQuestionSearchBar: React.FC = () => {
         </Group>
 
         {questions.length > 0 && (
-          <>
-            <Divider my="md" />
-            <SimpleGrid cols={1} spacing="md">
-              {questions.slice().reverse().map((question, index) => (
-                <Paper key={index} p="sm" radius="md" withBorder>
-                  <Group position="apart">
-                    <Text weight={500}>{question.text}</Text>
-                    <Tooltip
-                      label="Remove question"
-                      position="bottom"
-                      withArrow
-                    >
-                      <IconTrash
-                        size={16}
-                        color={theme.colors.gray[5]}
-                        onClick={() => removeQuestion(index)}
-                      />
-                    </Tooltip>
-                  </Group>
-                  <Text mt="xs" color={theme.colors.gray[6]}>
-                    <ReactMarkdown>{question.result}</ReactMarkdown>
-                  </Text>
-                </Paper>
-              ))}
-            </SimpleGrid>
-          </>
+          <Group mt="sm">
+            {questions.map((question, index) => (
+              <Chip
+                key={index}
+                variant="outline"
+                color="gray"
+                onClick={() => removeQuestion(index)}
+                // rightSection={
+                //   <IconTrash
+                //     size={14}
+                //     onClick={() => removeQuestion(index)}
+                //   />
+                // }
+              >
+                {question}
+              </Chip>
+            ))}
+          </Group>
         )}
+
+        {searchResults !== null && (
+          <Text mt="md" color={theme.colors.gray[6]}>
+            <ReactMarkdown>{searchResults}</ReactMarkdown>
+          </Text>
+        )}
+
       </Stack>
     </Paper>
   );
