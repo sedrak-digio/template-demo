@@ -16,7 +16,15 @@ const MultiQuestionSearchBar: React.FC = () => {
   const [searchResults, setSearchResults] = useState<string | null>(null); // State for search results
   const theme = useMantineTheme();
 
-  const addQuestion = () => {
+  // Function to handle Enter key press
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      addQuestion(); // Add the current question first
+      processQuestions(); // Then process all questions
+    }
+  };
+
+  const addQuestion = async () => {
     if (currentQuestion.trim() !== '') {
       setQuestions([...questions, currentQuestion]);
       setCurrentQuestion('');
@@ -26,7 +34,6 @@ const MultiQuestionSearchBar: React.FC = () => {
   const removeQuestion = (index: number) => {
     const updatedQuestions = [...questions];
     updatedQuestions.splice(index, 1);
-    debugger;
     setQuestions(updatedQuestions);
   };
 
@@ -39,7 +46,6 @@ const MultiQuestionSearchBar: React.FC = () => {
     // Simulate a delay for demonstration
     // await new Promise((resolve) => setTimeout(resolve, 1000));
     console.log("Heya!")
-    debugger;
     const responseJson = await(await fetch(`https://australia-southeast2-mg-mantelorians.cloudfunctions.net/queenstown?q=${questions.join(',')}`)).json();
     console.log(responseJson)
 
@@ -49,8 +55,8 @@ const MultiQuestionSearchBar: React.FC = () => {
 
   const processQuestions = async () => {
     try {
-      setSearchResults("Loading... (don't judge me too harshly, I'll get around the the UI in a hot minute!"); // Update search results state
-      const result = await search(questions);
+      setSearchResults("Loading... (don't judge me too harshly, I'll get around the UI in a hot minute!)"); // Update search results state
+      const result = await search(questions.length > 0 ?questions : [currentQuestion]);
       setQuestions([]); // Clear the input chips after search
       setCurrentQuestion('');
       setSearchResults(result); // Update search results state
@@ -73,6 +79,7 @@ const MultiQuestionSearchBar: React.FC = () => {
             placeholder="Enter your descriptive question, such as 'bars in town, with live music?'"
             value={currentQuestion}
             onChange={handleQuestionChange}
+            onKeyDown={handleKeyDown}
             rightSection={<IconPlus size={16} onClick={addQuestion} />}
           />
           <Button variant="outline" onClick={processQuestions}>
