@@ -69,8 +69,8 @@ const MultiQuestionSearchBar: React.FC = () => {
       <Stack>
         <Group>
           <TextInput
-            width='800'
-            placeholder="Enter your descriptive question"
+            w="80%"
+            placeholder="Enter your descriptive question, such as 'bars in town, with live music?'"
             value={currentQuestion}
             onChange={handleQuestionChange}
             rightSection={<IconPlus size={16} onClick={addQuestion} />}
