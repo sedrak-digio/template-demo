@@ -46,7 +46,7 @@ const MultiQuestionSearchBar: React.FC = () => {
     // Simulate a delay for demonstration
     // await new Promise((resolve) => setTimeout(resolve, 1000));
     console.log("Heya!")
-    const responseJson = await(await fetch(`https://australia-southeast2-mg-mantelorians.cloudfunctions.net/queenstown?q=${questions.join(',')}`)).json();
+    const responseJson = await(await fetch(`https://australia-southeast1-bookai-435011.cloudfunctions.net/function-1?q==${questions.join(',')}`)).json();
     console.log(responseJson)
 
     // Replace with your actual search logic
@@ -69,14 +69,14 @@ const MultiQuestionSearchBar: React.FC = () => {
   return (
     <Paper shadow="sm" p="md" radius="md" withBorder>
       <Text size="lg" mb="md">
-        Queenstown suggestion search!
+        Pride and Prejudice book Analysis!
       </Text>
 
       <Stack>
         <Group>
           <TextInput
             w="80%"
-            placeholder="Enter your descriptive question, such as 'bars in town, with live music?'"
+            placeholder="Enter your descriptive question, such as 'Which characters interact with each other??'"
             value={currentQuestion}
             onChange={handleQuestionChange}
             onKeyDown={handleKeyDown}
