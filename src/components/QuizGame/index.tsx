@@ -43,7 +43,18 @@ export default function QuizGame() {
         // This is the production code that calls the real API
         console.log("PROD MODE: Fetching data from API.");
         try {
-          const response = await fetch(`/api/members`);
+          // Get the apiKey from the URL query parameter
+          const urlParams = new URLSearchParams(window.location.search);
+          const apiKey = urlParams.get('xid') || '';
+
+          const response = await fetch(`/api/members`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                // Add the secret API key to the header here
+                'x-api-key': apiKey,
+            },
+          });
           if (!response.ok) throw new Error("API Fetch failed");
           const data = await response.json();
           // Assuming the API has the old structure, adjust if needed
