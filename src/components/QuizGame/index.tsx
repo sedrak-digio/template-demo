@@ -47,14 +47,16 @@ export default function QuizGame() {
           if (!response.ok) throw new Error("API Fetch failed");
           const data = await response.json();
           // Assuming the API has the old structure, adjust if needed
-          const mappedHPP: Hpp[] = data.collectionList[0].members.map((h: any) => ({
-            email: h.profile.email,
-            id: h.profile.email,
-            sId: h.id,
-            name: h.profile.real_name,
-            image: h.profile.image_original,
-            image_192: `https://ca.slack-edge.com/${h.team_id}-${h.id}-${h.profile.avatar_hash}-128`,
-          }));
+          const mappedHPP: Hpp[] = data.collectionList[0].members
+          
+        //   .map((h: any) => ({
+        //     email: h.profile.email,
+        //     id: h.profile.email,
+        //     sId: h.id,
+        //     name: h.profile.real_name,
+        //     image: h.profile.image_original,
+        //     image_192: `https://ca.slack-edge.com/${h.team_id}-${h.id}-${h.profile.avatar_hash}-128`,
+        //   }));
 
           setHpp(mappedHPP);
         } catch (error) {

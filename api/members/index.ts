@@ -5,7 +5,7 @@ module.exports = async function (context, req) {
 
     const hpId = req.query.hp || (req.body && req.body.hpId);
 
-    const dbClient = await getDBContainer('HP', 'Members');
+    const dbClient = await getDBContainer('Workshop', 'Members');
     const collectionList = (await dbClient.items.readAll().fetchAll()).resources;
     const membersRef = await dbClient.item(hpId || 'slack_cache');
     const { resource: members } = await membersRef.read();
