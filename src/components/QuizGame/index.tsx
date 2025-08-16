@@ -43,7 +43,7 @@ export default function QuizGame() {
         // This is the production code that calls the real API
         console.log("PROD MODE: Fetching data from API.");
         try {
-          const response = await fetch(`/api/hppers`);
+          const response = await fetch(`/api/members`);
           if (!response.ok) throw new Error("API Fetch failed");
           const data = await response.json();
           // Assuming the API has the old structure, adjust if needed

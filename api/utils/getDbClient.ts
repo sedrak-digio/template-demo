@@ -5,7 +5,7 @@ const cosmosClient = new CosmosClient({
     key: process.env.COSMOS_KEY,
 });
 
-async function getDBContainer(databaseId, containerId) {
+export async function getDBContainer(databaseId, containerId) {
     const database = (
         await cosmosClient.databases.createIfNotExists({
             id: process.env.COSMOS_ENV || databaseId,
