@@ -32,6 +32,8 @@
 - [ ] Add search/filter bar for mantelorian names
   - Implement text input to filter displayed cards by name
   - Add to the end state component
+- [ ] Fix loading in QueenstownSearchBar.tsx
+  - Investigate and resolve loading issues in the search bar component
 
 ### Future Enhancements
 - [ ] Extend Hpp interface to include location and domain fields

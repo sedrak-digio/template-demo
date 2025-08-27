@@ -6,19 +6,23 @@ import {
   Stack, Paper, Group,
   useMantineTheme,
   Chip,
+  Loader,
+  Alert,
 } from '@mantine/core';
-import { IconPlus } from '@tabler/icons-react'; // Keep this for now
+import { IconPlus, IconInfoCircle } from '@tabler/icons-react';
 import ReactMarkdown from 'react-markdown';
 
 const MultiQuestionSearchBar: React.FC = () => {
   const [questions, setQuestions] = useState<string[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [searchResults, setSearchResults] = useState<string | null>(null); // State for search results
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const theme = useMantineTheme();
 
   // Function to handle Enter key press
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
+    if (event.key === 'Enter' && !isLoading) {
       addQuestion(); // Add the current question first
       processQuestions(); // Then process all questions
     }
@@ -54,15 +58,23 @@ const MultiQuestionSearchBar: React.FC = () => {
   };
 
   const processQuestions = async () => {
+    if (isLoading) return; // Prevent multiple simultaneous searches
+    
     try {
-      setSearchResults("Loading... (don't judge me too harshly, I'll get around the UI in a hot minute!)"); // Update search results state
-      const result = await search(questions.length > 0 ?questions : [currentQuestion]);
+      setIsLoading(true);
+      setError(null);
+      setSearchResults(null);
+      
+      const result = await search(questions.length > 0 ? questions : [currentQuestion]);
       setQuestions([]); // Clear the input chips after search
       setCurrentQuestion('');
       setSearchResults(result); // Update search results state
     } catch (error) {
       console.error('Error searching:', error);
-      setSearchResults('Error'); // Update search results state for error
+      setError(error instanceof Error ? error.message : 'An error occurred while searching');
+      setSearchResults(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -80,9 +92,15 @@ const MultiQuestionSearchBar: React.FC = () => {
             value={currentQuestion}
             onChange={handleQuestionChange}
             onKeyDown={handleKeyDown}
+            disabled={isLoading}
             rightSection={<IconPlus size={16} onClick={addQuestion} />}
           />
-          <Button variant="outline" onClick={processQuestions}>
+          <Button 
+            variant="outline" 
+            onClick={processQuestions}
+            loading={isLoading}
+            disabled={isLoading}
+          >
             Search
           </Button>
         </Group>
@@ -108,7 +126,22 @@ const MultiQuestionSearchBar: React.FC = () => {
           </Group>
         )}
 
-        {searchResults !== null && (
+        {isLoading && (
+          <Group mt="md" align="center">
+            <Loader size="sm" />
+            <Text size="sm" color={theme.colors.gray[6]}>
+              Searching for suggestions...
+            </Text>
+          </Group>
+        )}
+
+        {error && (
+          <Alert icon={<IconInfoCircle size="1rem" />} color="red" mt="md">
+            {error}
+          </Alert>
+        )}
+
+        {searchResults !== null && !isLoading && (
           <Text mt="md" color={theme.colors.gray[6]}>
             <ReactMarkdown>{searchResults}</ReactMarkdown>
           </Text>
