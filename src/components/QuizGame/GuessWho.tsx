@@ -60,7 +60,7 @@ export default function GuessWho({
 
   // Logic to select new peeps for the round
   useEffect(() => {
-    if (remainingPeeps.length < 4) {
+    if (remainingPeeps.length < 1) {
       setGameState('ended');
       return;
     }

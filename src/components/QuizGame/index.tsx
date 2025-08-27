@@ -2,14 +2,15 @@ import {
   Stack,
   Title,
   Button,
-  Badge,
-  Group,
+  // Badge,
+  // Group,
   Container,
   Loader,
   Center,
 } from '@mantine/core';
 import { useState, useEffect } from 'react';
 import GuessWho from './GuessWho';
+import MantelorianCards from './MantelorianCards';
 
 // Define a type for the person object for type safety
 interface Hpp {
@@ -34,7 +35,7 @@ export default function QuizGame() {
       // This is the key change: check if we are in development mode
       if (process.env.NODE_ENV === 'development') {
         // console.log("DEV MODE: Loading local fixture data.");
-        // // Dynamically import fixtures to keep them out of the production bundle
+        // // // Dynamically import fixtures to keep them out of the production bundle
         // const { getMockHppData } = await import('../../fixtures/hpSlackFixtures'); 
         // const mockData = getMockHppData();
         // console.log("Mock data loaded:", mockData);
@@ -98,7 +99,7 @@ export default function QuizGame() {
       ) : (
         <Stack>
           {gameState === 'ended' && (
-            <Stack align="flex-start" mt="xl" w={{ base: '100%', sm: '60%' }}>
+            <Stack align="flex-start" mt="xl" w="100%">
               <Title order={2}>Total score: {correctPeeps.length}</Title>
               <Button
                 onClick={gameReset}
@@ -112,13 +113,8 @@ export default function QuizGame() {
               >
                 Play again
               </Button>
-              <Group>
-                {correctPeeps.map((p) => (
-                  <Badge key={p.email} color="cyan" size="lg" variant="light">
-                    {p.name}
-                  </Badge>
-                ))}
-              </Group>
+              <Title order={3} mt="xl">Mantelorians You've Guessed:</Title>
+              <MantelorianCards members={correctPeeps} />
             </Stack>
           )}
           {gameState === 'started' && hpp.length > 0 && (
