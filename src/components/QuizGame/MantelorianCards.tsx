@@ -5,7 +5,10 @@ import {
   SimpleGrid,
   Stack,
   Badge,
+  ActionIcon,
+  Group,
 } from '@mantine/core';
+import { IconBrandSlack } from '@tabler/icons-react';
 
 interface Hpp {
   email: string;
@@ -19,6 +22,11 @@ interface Hpp {
 interface MantelorianCardsProps {
   members: Hpp[];
 }
+
+// Function to generate Slack profile URL
+const getSlackProfileUrl = (sId: string): string => {
+  return `https://slack.com/app_redirect?channel=${sId}`;
+};
 
 export default function MantelorianCards({ members }: MantelorianCardsProps) {
   return (
@@ -45,9 +53,23 @@ export default function MantelorianCards({ members }: MantelorianCardsProps) {
             <Text size="md" fw={500} ta="center">
               {member.name}
             </Text>
-            <Badge color="cyan" size="md" variant="light">
-              Mantelorian
-            </Badge>
+            <Group gap="xs">
+              <Badge color="cyan" size="md" variant="light">
+                Mantelorian
+              </Badge>
+              <ActionIcon
+                variant="light"
+                color="violet"
+                size="md"
+                component="a"
+                href={getSlackProfileUrl(member.sId)}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`Open ${member.name}'s Slack profile`}
+              >
+                <IconBrandSlack size={16} />
+              </ActionIcon>
+            </Group>
           </Stack>
         </Card>
       ))}

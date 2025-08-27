@@ -20,6 +20,11 @@
   - Increased avatar size from 120px to 150px
   - Increased spacing and padding for better visual balance
   - Stack content is centered vertically within full height cards
+- [x] Add Slack deeplinks using sId from HPP interface (`src/components/QuizGame/MantelorianCards.tsx:26-29,60-72`)
+  - Implemented `getSlackProfileUrl()` function using `https://slack.com/app_redirect?channel=${sId}` format
+  - Added Slack icon button next to each member's badge that opens in new tab
+  - Used Mantine ActionIcon with IconBrandSlack from Tabler icons
+  - Added proper accessibility attributes (title, rel="noopener noreferrer")
 
 ## Pending Tasks 📋
 
