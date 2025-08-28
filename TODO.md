@@ -29,10 +29,10 @@
 ## Pending Tasks 📋
 
 ### Next Steps
-- [ ] Add search/filter bar for mantelorian names
+- [x] Add search/filter bar for mantelorian names
   - Implement text input to filter displayed cards by name
   - Add to the end state component
-- [ ] Fix loading in QueenstownSearchBar.tsx
+- [x] Fix loading in QueenstownSearchBar.tsx
   - Investigate and resolve loading issues in the search bar component
 
 ### Future Enhancements

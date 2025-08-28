@@ -7,7 +7,10 @@ import {
   Container,
   Loader,
   Center,
+  TextInput,
+  Group,
 } from '@mantine/core';
+import { IconSearch } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import GuessWho from './GuessWho';
 import MantelorianCards from './MantelorianCards';
@@ -18,6 +21,7 @@ export default function QuizGame() {
   const [mntl, setMntl] = useState<Mntl[]>([]);
   const [correctPeeps, setCorrectPeeps] = useState<Mntl[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const loadGameData = async () => {
@@ -79,7 +83,13 @@ export default function QuizGame() {
   const gameReset = () => {
     setCorrectPeeps([]);
     setGameState('started');
+    setSearchQuery('');
   };
+
+  // Filter correct peeps based on search query
+  const filteredCorrectPeeps = correctPeeps.filter(member =>
+    member.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <Container>
@@ -104,8 +114,19 @@ export default function QuizGame() {
               >
                 Play again
               </Button>
-              <Title order={3} mt="xl">Mantelorians You've Guessed:</Title>
-              <MantelorianCards members={correctPeeps} />
+              
+              <Group justify="space-between" align="flex-end" mt="xl">
+                <Title order={3}>Mantelorians You've Guessed:</Title>
+                <TextInput
+                  placeholder="Search by name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.currentTarget.value)}
+                  leftSection={<IconSearch size={16} />}
+                  w={250}
+                />
+              </Group>
+              
+              <MantelorianCards members={filteredCorrectPeeps} />
             </Stack>
           )}
           {gameState === 'started' && mntl.length > 0 && (
