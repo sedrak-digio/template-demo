@@ -20,7 +20,7 @@
   - Increased avatar size from 120px to 150px
   - Increased spacing and padding for better visual balance
   - Stack content is centered vertically within full height cards
-- [x] Add Slack deeplinks using sId from HPP interface (`src/components/QuizGame/MantelorianCards.tsx:26-29,60-72`)
+- [x] Add Slack deeplinks using sId from MNTL interface (`src/components/QuizGame/MantelorianCards.tsx:26-29,60-72`)
   - Implemented `getSlackProfileUrl()` function using `https://slack.com/app_redirect?channel=${sId}` format
   - Added Slack icon button next to each member's badge that opens in new tab
   - Used Mantine ActionIcon with IconBrandSlack from Tabler icons
@@ -36,13 +36,13 @@
   - Investigate and resolve loading issues in the search bar component
 
 ### Future Enhancements
-- [ ] Extend Hpp interface to include location and domain fields
+- [ ] Extend Mntl interface to include location and domain fields
 - [ ] Update MantelorianCards to display location and domain information
 - [ ] Add filter options for location and domain
 
 ## Notes 📝
 
-- The card component uses the existing `Hpp` interface for type safety
+- The card component uses the existing `Mntl` interface for type safety
 - Cards display member avatars at 80px size with rounded corners
 - Responsive grid adjusts from 1 column on mobile to 4 columns on large screens
 - Maintains the existing game flow and state management

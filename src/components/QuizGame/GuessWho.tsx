@@ -10,26 +10,17 @@ import {
   useMantineTheme,
 } from '@mantine/core';
 import classes from './GuessWho.module.css'; // 1. Import the CSS module
+import { Mntl } from './types';
 
 // Mantine v7: Notifications are now imported like this
 // import { notifications } from '@mantine/notifications';
 
-// Define a type for the person object
-interface Hpp {
-  email: string;
-  id: string;
-  sId: string;
-  name: string;
-  image: string;
-  image_192: string;
-}
-
 // Define props for the component
 interface GuessWhoProps {
-  data: Hpp[];
+  data: Mntl[];
   setGameState: React.Dispatch<React.SetStateAction<'started' | 'ended'>>;
-  correctPeeps: Hpp[];
-  setCorrectPeeps: React.Dispatch<React.SetStateAction<Hpp[]>>;
+  correctPeeps: Mntl[];
+  setCorrectPeeps: React.Dispatch<React.SetStateAction<Mntl[]>>;
 }
 
 export default function GuessWho({
@@ -40,9 +31,9 @@ export default function GuessWho({
 }: GuessWhoProps) {
   const theme = useMantineTheme();
   // State with TypeScript types
-  const [peeps, setPeeps] = useState<Hpp[]>([]);
-  const [peep, setPeep] = useState<Hpp | undefined>();
-  const [remainingPeeps, setRemainingPeeps] = useState<Hpp[]>(data);
+  const [peeps, setPeeps] = useState<Mntl[]>([]);
+  const [peep, setPeep] = useState<Mntl | undefined>();
+  const [remainingPeeps, setRemainingPeeps] = useState<Mntl[]>(data);
   const [timeRemaining, setTimeRemaining] = useState(20);
 
   // Time countdown timer
@@ -75,7 +66,7 @@ export default function GuessWho({
     setPeep(peepSlice[randomPeepIndex]);
   }, [remainingPeeps, setGameState]);
 
-  const handleSelection = (selectedPeep: Hpp) => {
+  const handleSelection = (selectedPeep: Mntl) => {
     if (peep?.email === selectedPeep.email) {
       correctAnswer();
     } else {

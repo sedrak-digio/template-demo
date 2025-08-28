@@ -11,21 +11,12 @@ import {
 import { useState, useEffect } from 'react';
 import GuessWho from './GuessWho';
 import MantelorianCards from './MantelorianCards';
-
-// Define a type for the person object for type safety
-interface Hpp {
-  email: string;
-  id: string;
-  sId: string;
-  name: string;
-  image: string;
-  image_192: string;
-}
+import { Mntl } from './types';
 
 export default function QuizGame() {
   const [gameState, setGameState] = useState<'started' | 'ended'>('started');
-  const [hpp, setHpp] = useState<Hpp[]>([]);
-  const [correctPeeps, setCorrectPeeps] = useState<Hpp[]>([]);
+  const [mntl, setMntl] = useState<Mntl[]>([]);
+  const [correctPeeps, setCorrectPeeps] = useState<Mntl[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -36,10 +27,10 @@ export default function QuizGame() {
       if (process.env.NODE_ENV === 'development') {
         // console.log("DEV MODE: Loading local fixture data.");
         // // // Dynamically import fixtures to keep them out of the production bundle
-        // const { getMockHppData } = await import('../../fixtures/hpSlackFixtures'); 
-        // const mockData = getMockHppData();
+        // const { getMockMntlData } = await import('../../fixtures/hpSlackFixtures'); 
+        // const mockData = getMockMntlData();
         // console.log("Mock data loaded:", mockData);
-        // setHpp(mockData);
+        // setMntl(mockData);
       } else {
         // This is the production code that calls the real API
         console.log("PROD MODE: Fetching data from API.");
@@ -59,7 +50,7 @@ export default function QuizGame() {
           if (!response.ok) throw new Error("API Fetch failed");
           const data = await response.json();
           // Assuming the API has the old structure, adjust if needed
-          const mappedHPP: Hpp[] = data.collectionList[0].members
+          const mappedMNTL: Mntl[] = data.collectionList[0].members
           
         //   .map((h: any) => ({
         //     email: h.profile.email,
@@ -70,7 +61,7 @@ export default function QuizGame() {
         //     image_192: `https://ca.slack-edge.com/${h.team_id}-${h.id}-${h.profile.avatar_hash}-128`,
         //   }));
 
-          setHpp(mappedHPP);
+          setMntl(mappedMNTL);
         } catch (error) {
           console.error("Failed to fetch production data:", error);
         }
@@ -79,11 +70,11 @@ export default function QuizGame() {
       setIsLoading(false);
     };
 
-    // Only load data if the hpp array is empty
-    if (hpp.length < 1) {
+    // Only load data if the mntl array is empty
+    if (mntl.length < 1) {
       loadGameData();
     }
-  }, [hpp.length]); // Dependency array is correct
+  }, [mntl.length]); // Dependency array is correct
 
   const gameReset = () => {
     setCorrectPeeps([]);
@@ -117,9 +108,9 @@ export default function QuizGame() {
               <MantelorianCards members={correctPeeps} />
             </Stack>
           )}
-          {gameState === 'started' && hpp.length > 0 && (
+          {gameState === 'started' && mntl.length > 0 && (
             <GuessWho
-              data={hpp}
+              data={mntl}
               setGameState={setGameState}
               correctPeeps={correctPeeps}
               setCorrectPeeps={setCorrectPeeps}

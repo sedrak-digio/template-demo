@@ -9,18 +9,10 @@ import {
   Group,
 } from '@mantine/core';
 import { IconBrandSlack } from '@tabler/icons-react';
-
-interface Hpp {
-  email: string;
-  id: string;
-  sId: string;
-  name: string;
-  image: string;
-  image_192: string;
-}
+import { Mntl } from './types';
 
 interface MantelorianCardsProps {
-  members: Hpp[];
+  members: Mntl[];
 }
 
 // Function to generate Slack profile URL
