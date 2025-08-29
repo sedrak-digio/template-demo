@@ -1,0 +1,59 @@
+name: "CodeQL Security Analysis"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    # Run at 2:30 UTC every day
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+    # Manual trigger with optional inputs
+    inputs:
+      scan_level:
+        description: 'Security scan level'
+        required: false
+        default: 'security-extended'
+        type: choice
+        options:
+          - 'security-extended'
+          - 'security-and-quality'
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      # required for all workflows
+      security-events: write
+      # required to fetch internal or private CodeQL packs
+      packages: read
+      # only required for workflows in private repositories
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - language: javascript-typescript
+          build-mode: none
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+        # Use input parameter for manual runs, default for automatic runs
+        queries: ${{ inputs.scan_level || 'security-extended,security-and-quality' }}
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{ matrix.language }}"
