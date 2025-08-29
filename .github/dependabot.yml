@@ -1,0 +1,77 @@
+version: 2
+updates:
+  # Enable version updates for npm (frontend dependencies)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "@sedrak-digio"
+    assignees:
+      - "@sedrak-digio" 
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+    labels:
+      - "dependencies"
+      - "automated"
+    # Group minor and patch updates to reduce PR noise
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Enable version updates for npm (API dependencies)
+  - package-ecosystem: "npm"
+    directory: "/api"
+    schedule:
+      interval: "weekly" 
+      day: "monday"
+      time: "09:30"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "@sedrak-digio"
+    assignees:
+      - "@sedrak-digio"
+    commit-message:
+      prefix: "deps(api)"
+      prefix-development: "deps-dev(api)"
+    labels:
+      - "dependencies"
+      - "api"
+      - "automated"
+    groups:
+      api-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Enable security updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "@sedrak-digio"
+    assignees:
+      - "@sedrak-digio"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "github-actions"
+      - "ci"
+      - "automated"
