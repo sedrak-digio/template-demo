@@ -163,14 +163,23 @@ jobs:
           git checkout -b "$BRANCH_NAME"
           
           # Parse alerts and generate fixes
-          echo "$ALERTS_DATA" | jq -r '
-            if .${{ matrix.fix-type == "dependency" && "vulnerabilityAlerts" || "codeScanning" }}.alerts.nodes | length > 0 then
-              .${{ matrix.fix-type == "dependency" && "vulnerabilityAlerts" || "codeScanning" }}.alerts.nodes[] | 
-              @json
-            else
-              empty
-            end
-          ' > /tmp/alerts.json
+          if [ "${{ matrix.fix-type }}" = "dependency" ]; then
+            echo "$ALERTS_DATA" | jq -r '
+              if .vulnerabilityAlerts.alerts.nodes | length > 0 then
+                .vulnerabilityAlerts.alerts.nodes[] | @json
+              else
+                empty
+              end
+            ' > /tmp/alerts.json
+          else
+            echo "$ALERTS_DATA" | jq -r '
+              if .codeScanning.alerts.nodes | length > 0 then
+                .codeScanning.alerts.nodes[] | @json
+              else
+                empty
+              end
+            ' > /tmp/alerts.json
+          fi
           
           FIXES_APPLIED=false
           
@@ -206,15 +215,13 @@ jobs:
                 echo "Attempting to fix code vulnerability in $FILE_PATH:$START_LINE"
                 
                 # Create fix prompt for GitHub Copilot
-                cat > /tmp/fix_prompt.txt << EOF
-Fix this security vulnerability:
-File: $FILE_PATH
-Line: $START_LINE
-Rule: $RULE_ID
-Issue: $DESCRIPTION
-
-Please provide a secure code fix that addresses this vulnerability while maintaining functionality.
-EOF
+                echo "Fix this security vulnerability:" > /tmp/fix_prompt.txt
+                echo "File: $FILE_PATH" >> /tmp/fix_prompt.txt
+                echo "Line: $START_LINE" >> /tmp/fix_prompt.txt
+                echo "Rule: $RULE_ID" >> /tmp/fix_prompt.txt
+                echo "Issue: $DESCRIPTION" >> /tmp/fix_prompt.txt
+                echo "" >> /tmp/fix_prompt.txt
+                echo "Please provide a secure code fix that addresses this vulnerability while maintaining functionality." >> /tmp/fix_prompt.txt
                 
                 # Use GitHub Copilot to suggest fixes (if available)
                 # Note: This requires GitHub Copilot CLI access
@@ -257,13 +264,7 @@ EOF
             git config --local user.email "action@github.com"
             git config --local user.name "GitHub Action"
             git add .
-            git commit -m "fix: auto-fix ${{ matrix.fix-type }} security vulnerabilities
-
-- Applied automated security fixes for ${{ matrix.description }}
-- Generated using GitHub Actions security workflow
-- Requires security team review before merge
-
-🔒 Auto-generated security fix"
+            git commit -m "fix: auto-fix ${{ matrix.fix-type }} security vulnerabilities - 🔒 Auto-generated security fix"
             
             # Push branch
             git push origin "$BRANCH_NAME"
@@ -277,9 +278,11 @@ EOF
           BRANCH_NAME="${{ steps.generate-fixes.outputs.branch-name }}"
           
           # Count the number of vulnerabilities addressed
-          VULN_COUNT=$(echo '${{ needs.fetch-vulnerabilities.outputs.vulnerabilities }}' | jq -r '
-            .${{ matrix.fix-type == "dependency" && "vulnerabilityAlerts" || "codeScanning" }}.alerts.nodes | length
-          ')
+          if [ "${{ matrix.fix-type }}" = "dependency" ]; then
+            VULN_COUNT=$(echo '${{ needs.fetch-vulnerabilities.outputs.vulnerabilities }}' | jq -r '.vulnerabilityAlerts.alerts.nodes | length')
+          else
+            VULN_COUNT=$(echo '${{ needs.fetch-vulnerabilities.outputs.vulnerabilities }}' | jq -r '.codeScanning.alerts.nodes | length')
+          fi
           
           # Create detailed PR description
           cat > /tmp/pr_body.md << 'EOF'
@@ -303,14 +306,17 @@ EOF
           sed -i "s/VULN_COUNT_PLACEHOLDER/$VULN_COUNT/" /tmp/pr_body.md
           
           # Add vulnerability details
-          echo '${{ needs.fetch-vulnerabilities.outputs.vulnerabilities }}' | jq -r '
-            .${{ matrix.fix-type == "dependency" && "vulnerabilityAlerts" || "codeScanning" }}.alerts.nodes[] |
-            if .securityVulnerability then
+          if [ "${{ matrix.fix-type }}" = "dependency" ]; then
+            echo '${{ needs.fetch-vulnerabilities.outputs.vulnerabilities }}' | jq -r '
+              .vulnerabilityAlerts.alerts.nodes[] |
               "- **" + .securityVulnerability.package.name + "**: " + .securityVulnerability.advisory.summary
-            else  
+            ' >> /tmp/pr_body.md
+          else
+            echo '${{ needs.fetch-vulnerabilities.outputs.vulnerabilities }}' | jq -r '
+              .codeScanning.alerts.nodes[] |
               "- **" + .rule.id + "** in `" + .locations.nodes[0].path + ":" + (.locations.nodes[0].startLine | tostring) + "`: " + .message.text
-            end
-          ' >> /tmp/pr_body.md
+            ' >> /tmp/pr_body.md
+          fi
           
           cat >> /tmp/pr_body.md << 'EOF'
 
