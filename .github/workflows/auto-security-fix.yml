@@ -336,17 +336,17 @@ jobs:
                       # Clean up AI response - remove markdown formatting and extra content
                       echo "🧹 Cleaning up AI response format..."
                       
-                      # Remove markdown code blocks and clean up the response
+                      # Clean up AI response - only remove markdown and explanatory comments
                       sed -e 's/^```[a-zA-Z]*//g' \
                           -e 's/^```$//g' \
-                          -e '/^[[:space:]]*$/d' \
                           -e 's/^"//g' \
                           -e 's/"$//g' \
                           /tmp/models_fix.txt | \
-                      # Remove any lines that look like explanations or comments about vulnerabilities
-                      grep -v -E "(CRITICAL|VULNERABILITY|SECURITY|Attack example|ReDoS)" | \
-                      # Remove lines that start with "// " followed by security-related terms
-                      grep -v -E "^[[:space:]]*//[[:space:]]*(CRITICAL|VULNERABILITY|SECURITY|This|Attack)" > /tmp/models_fix_clean.txt
+                      # Only remove lines that are purely explanatory comments about vulnerabilities
+                      # Keep actual code lines, even if they have security-related variable names
+                      grep -v -E "^[[:space:]]*//[[:space:]]*(CRITICAL VULNERABILITY|SECURITY ISSUE|This regex|Attack example)" | \
+                      # Remove empty lines
+                      sed '/^[[:space:]]*$/d' > /tmp/models_fix_clean.txt
                       
                       echo "Cleaned AI-generated code:"
                       cat /tmp/models_fix_clean.txt
