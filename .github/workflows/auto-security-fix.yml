@@ -245,25 +245,23 @@ jobs:
                     sed -n "${CONTEXT_START},${CONTEXT_END}p" "$FILE_PATH" > /tmp/code_context.txt
                     
                     # Create enhanced prompt for Copilot with actual code
-                    cat > /tmp/copilot_prompt.txt << EOF
-Fix this security vulnerability in the following code:
-
-File: $FILE_PATH
-Vulnerable Line: $START_LINE
-Security Rule: $RULE_ID
-Issue: $DESCRIPTION
-
-Current Code Context:
-$(cat /tmp/code_context.txt)
-
-Please provide the complete fixed version of this code that:
-1. Addresses the security vulnerability
-2. Maintains the same functionality
-3. Follows security best practices
-4. Is production-ready
-
-Respond with just the corrected code, no explanations.
-EOF
+                    echo "Fix this security vulnerability in the following code:" > /tmp/copilot_prompt.txt
+                    echo "" >> /tmp/copilot_prompt.txt
+                    echo "File: $FILE_PATH" >> /tmp/copilot_prompt.txt
+                    echo "Vulnerable Line: $START_LINE" >> /tmp/copilot_prompt.txt
+                    echo "Security Rule: $RULE_ID" >> /tmp/copilot_prompt.txt
+                    echo "Issue: $DESCRIPTION" >> /tmp/copilot_prompt.txt
+                    echo "" >> /tmp/copilot_prompt.txt
+                    echo "Current Code Context:" >> /tmp/copilot_prompt.txt
+                    cat /tmp/code_context.txt >> /tmp/copilot_prompt.txt
+                    echo "" >> /tmp/copilot_prompt.txt
+                    echo "Please provide the complete fixed version of this code that:" >> /tmp/copilot_prompt.txt
+                    echo "1. Addresses the security vulnerability" >> /tmp/copilot_prompt.txt
+                    echo "2. Maintains the same functionality" >> /tmp/copilot_prompt.txt
+                    echo "3. Follows security best practices" >> /tmp/copilot_prompt.txt
+                    echo "4. Is production-ready" >> /tmp/copilot_prompt.txt
+                    echo "" >> /tmp/copilot_prompt.txt
+                    echo "Respond with just the corrected code, no explanations." >> /tmp/copilot_prompt.txt
                     
                     # Try to get Copilot fix suggestion
                     if gh copilot suggest "$(cat /tmp/copilot_prompt.txt)" > /tmp/copilot_fix.txt 2>/dev/null; then
@@ -272,26 +270,24 @@ EOF
                       cat /tmp/copilot_fix.txt
                       
                       # Create a security note with the Copilot suggestion
-                      cat > "$FILE_PATH.security-note" << EOF
-// COPILOT-GENERATED SECURITY FIX
-// Rule: $RULE_ID
-// Issue: $DESCRIPTION
-// Location: Line $START_LINE
-//
-// ORIGINAL VULNERABLE CODE (lines $CONTEXT_START-$CONTEXT_END):
-$(sed 's/^/\/\/ /' /tmp/code_context.txt)
-//
-// COPILOT SUGGESTED FIX:
-$(sed 's/^/\/\/ /' /tmp/copilot_fix.txt)
-//
-// INSTRUCTIONS:
-// 1. Review the suggested fix above
-// 2. Apply the fix to $FILE_PATH around line $START_LINE
-// 3. Test thoroughly to ensure functionality is preserved
-// 4. Remove this security note file after applying the fix
-//
-// Generated: $(date -u)
-EOF
+                      echo "// COPILOT-GENERATED SECURITY FIX" > "$FILE_PATH.security-note"
+                      echo "// Rule: $RULE_ID" >> "$FILE_PATH.security-note"
+                      echo "// Issue: $DESCRIPTION" >> "$FILE_PATH.security-note"
+                      echo "// Location: Line $START_LINE" >> "$FILE_PATH.security-note"
+                      echo "//" >> "$FILE_PATH.security-note"
+                      echo "// ORIGINAL VULNERABLE CODE (lines $CONTEXT_START-$CONTEXT_END):" >> "$FILE_PATH.security-note"
+                      sed 's/^/\/\/ /' /tmp/code_context.txt >> "$FILE_PATH.security-note"
+                      echo "//" >> "$FILE_PATH.security-note"
+                      echo "// COPILOT SUGGESTED FIX:" >> "$FILE_PATH.security-note"
+                      sed 's/^/\/\/ /' /tmp/copilot_fix.txt >> "$FILE_PATH.security-note"
+                      echo "//" >> "$FILE_PATH.security-note"
+                      echo "// INSTRUCTIONS:" >> "$FILE_PATH.security-note"
+                      echo "// 1. Review the suggested fix above" >> "$FILE_PATH.security-note"
+                      echo "// 2. Apply the fix to $FILE_PATH around line $START_LINE" >> "$FILE_PATH.security-note"
+                      echo "// 3. Test thoroughly to ensure functionality is preserved" >> "$FILE_PATH.security-note"
+                      echo "// 4. Remove this security note file after applying the fix" >> "$FILE_PATH.security-note"
+                      echo "//" >> "$FILE_PATH.security-note"
+                      echo "// Generated: $(date -u)" >> "$FILE_PATH.security-note"
                       COPILOT_FIX_APPLIED=true
                       echo "✅ Created Copilot-powered security fix note: $FILE_PATH.security-note"
                       
