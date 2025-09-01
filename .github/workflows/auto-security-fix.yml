@@ -293,8 +293,14 @@ jobs:
           
           echo "fixes-applied=$FIXES_APPLIED" >> $GITHUB_OUTPUT
           
-          # Check if any files were modified
-          if git diff --quiet; then
+          # Add any generated security fix files to git
+          if ls *.security-note 2>/dev/null; then
+            echo "Adding generated security fix files to git..."
+            git add *.security-note
+          fi
+          
+          # Check if any files were modified (including staged files)
+          if git diff --quiet && git diff --cached --quiet; then
             echo "No changes made"
             echo "changes-made=false" >> $GITHUB_OUTPUT
           else
@@ -309,7 +315,7 @@ jobs:
             git config --local user.email "action@github.com"
             git config --local user.name "GitHub Action"
             git add .
-            git commit -m "fix: auto-fix ${{ matrix.fix-type }} security vulnerabilities - 🔒 Auto-generated security fix"
+            git commit -m "fix: auto-fix ${{ matrix.fix-type }} issues with security recommendations - 🔒 Auto-generated fix"
             
             # Push branch
             git push origin "$BRANCH_NAME"
