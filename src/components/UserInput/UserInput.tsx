@@ -16,6 +16,19 @@ export default function UserInput({ onSubmit }: UserInputProps) {
     // This could allow XSS attacks if user input contains malicious scripts
     setDisplayContent(userContent);
     
+    // ADDITIONAL VULNERABILITY: Using eval() with user input - EXTREMELY DANGEROUS
+    // This is one of the most dangerous patterns and should be easily detected by CodeQL
+    try {
+      if (userContent.startsWith('calculate:')) {
+        const expression = userContent.replace('calculate:', '').trim();
+        // CRITICAL SECURITY ISSUE: eval() with user input allows arbitrary code execution
+        const result = eval(expression);
+        console.log('Calculation result:', result);
+      }
+    } catch (error) {
+      console.error('Calculation error:', error);
+    }
+    
     if (onSubmit) {
       onSubmit(userContent);
     }
@@ -27,8 +40,13 @@ export default function UserInput({ onSubmit }: UserInputProps) {
         User Content Input (Test Component)
       </Text>
       
+      <Text size="sm" c="dimmed" mb="sm">
+        ⚠️ This component has intentional security vulnerabilities for testing.
+        Try: "calculate: 2+2" or HTML like "&lt;b&gt;bold&lt;/b&gt;"
+      </Text>
+      
       <TextInput
-        placeholder="Enter some content..."
+        placeholder="Enter some content or calculate: 2+2..."
         value={userContent}
         onChange={(e) => setUserContent(e.currentTarget.value)}
         mb="md"
