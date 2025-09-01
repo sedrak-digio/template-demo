@@ -164,6 +164,23 @@ gh issue create --title "Security Fixes Ready" --body-file ...
 - User feedback collection on manual PR creation experience
 - Analysis of common permission restriction patterns across repositories
 
+**Resolution Update (2025-09-01):**
+The root cause was identified as repository-level workflow permissions being set to `"read"` instead of `"write"`. The solution required:
+
+1. **Repository Settings Investigation**: Used GitHub API to identify `default_workflow_permissions: "read"`
+2. **Permission Update**: Changed via GitHub UI: Settings → Actions → General → Workflow permissions
+3. **Verification**: Confirmed setting changed to `"write"` permissions
+4. **Documentation**: Added setup requirements to prevent future occurrences
+
+**API Commands Used:**
+```bash
+# Diagnosis
+gh api repos/OWNER/REPO/actions/permissions/workflow
+
+# Result before fix: {"default_workflow_permissions":"read",...}
+# Result after fix:  {"default_workflow_permissions":"write",...}
+```
+
 ---
 
 ## Template for Future ADRs

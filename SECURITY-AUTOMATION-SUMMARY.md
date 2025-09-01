@@ -170,11 +170,34 @@ gh api repos/:owner/:repo/security-advisories
 ### Creating Test Vulnerabilities
 The project includes intentional security vulnerabilities in the UI components for testing the automation pipeline. These demonstrate real-world vulnerability patterns that CodeQL can detect.
 
+### Repository Setup Requirements
+
+**CRITICAL**: Before the security automation workflows can create pull requests, you must configure repository permissions:
+
+1. Go to **Repository Settings → Actions → General → Workflow permissions**
+2. Change from **"Read repository contents and packages permissions"** to **"Read and write permissions"**
+3. Ensure **"Allow GitHub Actions to create and approve pull requests"** is **UNCHECKED** (for security)
+4. Click **"Save"**
+
+**Common Issues:**
+- **Error**: `"GitHub Actions is not permitted to create or approve pull requests"`
+- **Root Cause**: Repository has `default_workflow_permissions: "read"`
+- **Solution**: Update to `"write"` permissions via repository settings
+
+**Verification Commands:**
+```bash
+# Check current permissions
+gh api repos/OWNER/REPO/actions/permissions/workflow
+
+# Expected result after fix:
+# {"default_workflow_permissions":"write","can_approve_pull_request_reviews":false}
+```
+
 ### Monitoring Automation
 1. Check **Actions** tab for workflow status
-2. Review **Security** tab for vulnerability alerts
+2. Review **Security** tab for vulnerability alerts  
 3. Monitor **Pull Requests** for automated fixes
-4. Check **Issues** for fallback notifications
+4. Check **Issues** for fallback notifications (if PR creation fails)
 
 ---
 
