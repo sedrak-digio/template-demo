@@ -159,6 +159,8 @@ jobs:
           
           # Authenticate GitHub CLI with the Copilot token
           echo "🔐 Authenticating GitHub CLI with Copilot token..."
+          # Temporarily clear GH_TOKEN to avoid conflict with --with-token
+          unset GH_TOKEN
           echo "$COPILOT_TOKEN" | gh auth login --with-token
           
           if gh auth status; then
@@ -167,6 +169,9 @@ jobs:
             echo "❌ GitHub CLI authentication failed"
             exit 1
           fi
+          
+          # Restore GH_TOKEN for other GitHub CLI operations if needed
+          export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
           
           # Test Copilot functionality
           echo "🧪 Testing GitHub Copilot CLI functionality..."
