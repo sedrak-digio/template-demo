@@ -294,9 +294,13 @@ jobs:
           echo "fixes-applied=$FIXES_APPLIED" >> $GITHUB_OUTPUT
           
           # Add any generated security fix files to git
-          if ls *.security-note 2>/dev/null; then
+          SECURITY_FILES=$(find . -name "*.security-note" -type f 2>/dev/null)
+          if [ -n "$SECURITY_FILES" ]; then
             echo "Adding generated security fix files to git..."
-            git add *.security-note
+            echo "Found security files: $SECURITY_FILES"
+            find . -name "*.security-note" -type f -exec git add {} \;
+          else
+            echo "No security fix files found to stage"
           fi
           
           # Check if any files were modified (including staged files)
