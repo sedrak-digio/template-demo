@@ -1,0 +1,10 @@
+// AUTO-APPLIED AI SECURITY FIX - Mon Sep  1 11:55:49 UTC 2025
+// Rule: js/redos
+// Issue: This part of the regular expression may cause exponential backtracking on strings containing many repetitions of 'a'.
+// Fixed Lines: 18-28
+// Backup: src/components/RegexValidator/RegexValidator.tsx.backup
+//
+// WHAT WAS FIXED:
+// AI automatically applied security fix to vulnerable code
+// Original code backed up to src/components/RegexValidator/RegexValidator.tsx.backup for reference
+// Review the changes and test thoroughly before merging
