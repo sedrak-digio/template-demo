@@ -6,9 +6,11 @@ import { theme } from "./theme";
 import MultiQuestionSearchBar from "./components/QuestionSearchBar/QuestionSearchBar";
 import QuizGame from "./components/QuizGame";
 import UserInput from "./components/UserInput/UserInput";
+import FileViewer from "./components/FileViewer/FileViewer";
+import RegexValidator from "./components/RegexValidator/RegexValidator";
 
 // Optional: Import icons for the tabs for a nicer UI
-import { IconUserSearch, IconBulb, IconAlertTriangle } from '@tabler/icons-react';
+import { IconUserSearch, IconBulb, IconAlertTriangle, IconFile, IconRegex } from '@tabler/icons-react';
 
 
 export default function App() {
@@ -36,6 +38,12 @@ export default function App() {
               <Tabs.Tab value="test-vulnerability" leftSection={<IconAlertTriangle size={16} />}>
                 Test Input (Demo)
               </Tabs.Tab>
+              <Tabs.Tab value="file-viewer" leftSection={<IconFile size={16} />}>
+                File Viewer (Test)
+              </Tabs.Tab>
+              <Tabs.Tab value="regex-validator" leftSection={<IconRegex size={16} />}>
+                Regex Test
+              </Tabs.Tab>
             </Tabs.List>
 
             {/* The content panel for the "Guess who?" tab */}
@@ -51,6 +59,16 @@ export default function App() {
             {/* The content panel for the "Test Vulnerability" tab */}
             <Tabs.Panel value="test-vulnerability" pt="xs">
               <UserInput onSubmit={(content) => console.log('Submitted:', content)} />
+            </Tabs.Panel>
+
+            {/* The content panel for the "File Viewer" tab */}
+            <Tabs.Panel value="file-viewer" pt="xs">
+              <FileViewer onFileLoad={(filename, _content) => console.log('File loaded:', filename)} />
+            </Tabs.Panel>
+
+            {/* The content panel for the "Regex Validator" tab */}
+            <Tabs.Panel value="regex-validator" pt="xs">
+              <RegexValidator onValidate={(input, result) => console.log('Validation:', input, result)} />
             </Tabs.Panel>
           </Tabs>
         </Stack>
