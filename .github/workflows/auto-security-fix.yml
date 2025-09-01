@@ -428,12 +428,7 @@ jobs:
             git config --local user.email "action@github.com"
             git config --local user.name "GitHub Action"
             git add .
-            git commit -m "fix: AI auto-applied security fixes for ${{ matrix.fix-type }} vulnerabilities
-
-- AI automatically fixed security vulnerabilities using GitHub Models API
-- Original code backed up to *.backup files for reference  
-- Fix summaries available in *.ai-fix-summary files
-- 🤖 Generated and applied by GitHub Models GPT-4o"
+            git commit -m "fix: AI auto-applied security fixes for ${{ matrix.fix-type }} vulnerabilities - 🤖 Generated and applied by GitHub Models GPT-4o"
             
             # Push branch
             git push origin "$BRANCH_NAME"
