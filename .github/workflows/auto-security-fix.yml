@@ -406,8 +406,7 @@ jobs:
             --base main \
             --label "security" \
             --label "automated-fix" \
-            --label "needs-review" \
-            --assignee "@me"
+            --label "needs-review"
             
           echo "✅ Pull request created for ${{ matrix.description }} fixes"
 
