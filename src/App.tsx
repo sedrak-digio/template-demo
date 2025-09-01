@@ -5,9 +5,10 @@ import { theme } from "./theme";
 // Import your page components
 import MultiQuestionSearchBar from "./components/QuestionSearchBar/QuestionSearchBar";
 import QuizGame from "./components/QuizGame";
+import UserInput from "./components/UserInput/UserInput";
 
 // Optional: Import icons for the tabs for a nicer UI
-import { IconUserSearch, IconBulb } from '@tabler/icons-react';
+import { IconUserSearch, IconBulb, IconAlertTriangle } from '@tabler/icons-react';
 
 
 export default function App() {
@@ -32,6 +33,9 @@ export default function App() {
               <Tabs.Tab value="recommendations" leftSection={<IconBulb size={16} />}>
                 Recommendations
               </Tabs.Tab>
+              <Tabs.Tab value="test-vulnerability" leftSection={<IconAlertTriangle size={16} />}>
+                Test Input (Demo)
+              </Tabs.Tab>
             </Tabs.List>
 
             {/* The content panel for the "Guess who?" tab */}
@@ -42,6 +46,11 @@ export default function App() {
             {/* The content panel for the "Recommendations" tab */}
             <Tabs.Panel value="recommendations" pt="xs">
               <MultiQuestionSearchBar />
+            </Tabs.Panel>
+
+            {/* The content panel for the "Test Vulnerability" tab */}
+            <Tabs.Panel value="test-vulnerability" pt="xs">
+              <UserInput onSubmit={(content) => console.log('Submitted:', content)} />
             </Tabs.Panel>
           </Tabs>
         </Stack>
