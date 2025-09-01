@@ -31,7 +31,7 @@ export default getDBContainer
 export async function incrementExample() {
 
     const DATABASE_ID = 'Workshop';
-    const CONTAINER_ID = 'Counters'
+    const CONTAINER_ID = 'Counters';
     const COUNTER_KEY = 'workshop-counter';
 
     const dbClient = await getDBContainer(DATABASE_ID, CONTAINER_ID);

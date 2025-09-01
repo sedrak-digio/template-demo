@@ -54,7 +54,7 @@ export default function QuizGame() {
           if (!response.ok) throw new Error("API Fetch failed");
           const data = await response.json();
           // Assuming the API has the old structure, adjust if needed
-          const mappedMNTL: Mntl[] = data.collectionList[0].members
+          const mappedMNTL: Mntl[] = data.collectionList[0].members;
           
         //   .map((h: any) => ({
         //     email: h.profile.email,
