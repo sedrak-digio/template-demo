@@ -226,23 +226,89 @@ jobs:
                 echo "" >> /tmp/fix_prompt.txt
                 echo "Please provide a secure code fix that addresses this vulnerability while maintaining functionality." >> /tmp/fix_prompt.txt
                 
-                # Use GitHub Copilot to suggest fixes (if available)
-                if [ "$COPILOT_AVAILABLE" = "true" ]; then
-                  echo "Generating AI-powered fix suggestion using GitHub Copilot..."
-                  if gh copilot suggest "$(cat /tmp/fix_prompt.txt)" > /tmp/suggested_fix.txt 2>/dev/null; then
-                    echo "✅ GitHub Copilot provided fix suggestion"
-                    echo "Copilot suggestion:" 
-                    cat /tmp/suggested_fix.txt
+                # PRIMARY APPROACH: Use GitHub Copilot to generate actual code fixes
+                COPILOT_FIX_APPLIED=false
+                echo "🤖 Attempting GitHub Copilot fix generation (primary approach)..."
+                
+                # Try Copilot regardless of detection (it might work even if detection failed)
+                if [ "$COPILOT_AVAILABLE" = "true" ] || [ "$COPILOT_AVAILABLE" != "false" ]; then
+                  echo "Generating AI-powered code fix using GitHub Copilot..."
+                  
+                  # Read the vulnerable code context
+                  if [ -f "$FILE_PATH" ]; then
+                    # Get 5 lines before and after the vulnerable line for context
+                    CONTEXT_START=$((START_LINE - 5))
+                    CONTEXT_END=$((START_LINE + 5))
+                    if [ $CONTEXT_START -lt 1 ]; then CONTEXT_START=1; fi
+                    
+                    echo "Reading code context from $FILE_PATH lines $CONTEXT_START-$CONTEXT_END"
+                    sed -n "${CONTEXT_START},${CONTEXT_END}p" "$FILE_PATH" > /tmp/code_context.txt
+                    
+                    # Create enhanced prompt for Copilot with actual code
+                    cat > /tmp/copilot_prompt.txt << EOF
+Fix this security vulnerability in the following code:
+
+File: $FILE_PATH
+Vulnerable Line: $START_LINE
+Security Rule: $RULE_ID
+Issue: $DESCRIPTION
+
+Current Code Context:
+$(cat /tmp/code_context.txt)
+
+Please provide the complete fixed version of this code that:
+1. Addresses the security vulnerability
+2. Maintains the same functionality
+3. Follows security best practices
+4. Is production-ready
+
+Respond with just the corrected code, no explanations.
+EOF
+                    
+                    # Try to get Copilot fix suggestion
+                    if gh copilot suggest "$(cat /tmp/copilot_prompt.txt)" > /tmp/copilot_fix.txt 2>/dev/null; then
+                      echo "✅ GitHub Copilot provided code fix suggestion"
+                      echo "Copilot suggested fix:"
+                      cat /tmp/copilot_fix.txt
+                      
+                      # Create a security note with the Copilot suggestion
+                      cat > "$FILE_PATH.security-note" << EOF
+// COPILOT-GENERATED SECURITY FIX
+// Rule: $RULE_ID
+// Issue: $DESCRIPTION
+// Location: Line $START_LINE
+//
+// ORIGINAL VULNERABLE CODE (lines $CONTEXT_START-$CONTEXT_END):
+$(sed 's/^/\/\/ /' /tmp/code_context.txt)
+//
+// COPILOT SUGGESTED FIX:
+$(sed 's/^/\/\/ /' /tmp/copilot_fix.txt)
+//
+// INSTRUCTIONS:
+// 1. Review the suggested fix above
+// 2. Apply the fix to $FILE_PATH around line $START_LINE
+// 3. Test thoroughly to ensure functionality is preserved
+// 4. Remove this security note file after applying the fix
+//
+// Generated: $(date -u)
+EOF
+                      COPILOT_FIX_APPLIED=true
+                      echo "✅ Created Copilot-powered security fix note: $FILE_PATH.security-note"
+                      
+                    else
+                      echo "⚠️ GitHub Copilot suggestion failed, will use pattern-based approach"
+                    fi
                   else
-                    echo "⚠️ GitHub Copilot suggestion failed, using pattern-based fixes"
+                    echo "⚠️ Could not read file $FILE_PATH for Copilot analysis"
                   fi
                 else
                   echo "ℹ️ GitHub Copilot not available, using pattern-based security fixes"
                 fi
                 
-                # Apply common security fixes patterns based on rule ID
-                echo "Applying pattern-based security fixes for rule: $RULE_ID"
-                PATTERN_FIX_APPLIED=false
+                # Only use pattern-based fixes as fallback when Copilot fails
+                if [ "$COPILOT_FIX_APPLIED" = "false" ]; then
+                  echo "⚠️ Copilot fix failed, falling back to pattern-based security fixes for rule: $RULE_ID"
+                  PATTERN_FIX_APPLIED=false
                 
                 # JavaScript/TypeScript security patterns
                 if [[ "$RULE_ID" == *"js/incomplete-sanitization"* ]]; then
@@ -283,8 +349,11 @@ jobs:
                   PATTERN_FIX_APPLIED=true
                 fi
                 
-                if [ "$PATTERN_FIX_APPLIED" = "true" ]; then
-                  echo "✅ Created security fix note: $FILE_PATH.security-note"
+                  if [ "$PATTERN_FIX_APPLIED" = "true" ]; then
+                    echo "✅ Created fallback pattern-based security fix note: $FILE_PATH.security-note"
+                  fi
+                else
+                  echo "✅ Using Copilot-generated fix (primary approach successful)"
                 fi
                 
                 FIXES_APPLIED=true
