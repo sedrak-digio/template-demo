@@ -130,6 +130,7 @@ jobs:
       - name: Setup GitHub Copilot CLI
         env:
           COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "🤖 Setting up GitHub Copilot CLI with Personal Access Token authentication..."
           
