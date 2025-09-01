@@ -1,0 +1,5 @@
+// TODO: SECURITY FIX - Address security vulnerability
+// Rule: js/redos
+// Issue: This part of the regular expression may cause exponential backtracking on strings containing many repetitions of 'a'.
+// Location: Line 23
+// Recommendation: Review and fix the security issue identified by CodeQL
