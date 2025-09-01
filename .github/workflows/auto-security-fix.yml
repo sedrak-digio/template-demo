@@ -127,24 +127,54 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install GitHub CLI extensions
+      - name: Setup GitHub Copilot CLI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Try to install GitHub Copilot CLI for AI-powered fixes
-          echo "Attempting to install GitHub Copilot CLI extension..."
-          if gh extension install github/gh-copilot 2>/dev/null; then
-            echo "✅ GitHub Copilot CLI extension installed successfully"
-            # Test if copilot commands are available
-            if gh copilot --help >/dev/null 2>&1; then
-              echo "✅ GitHub Copilot CLI is working"
-              echo "COPILOT_AVAILABLE=true" >> $GITHUB_ENV
+          # Install GitHub Copilot CLI extension
+          echo "🔧 Installing GitHub Copilot CLI extension..."
+          
+          # Check if already installed
+          if gh extension list | grep -q "gh-copilot"; then
+            echo "✅ GitHub Copilot CLI already installed"
+          else
+            echo "📦 Installing GitHub Copilot CLI extension..."
+            if gh extension install github/gh-copilot; then
+              echo "✅ GitHub Copilot CLI extension installed successfully"
             else
-              echo "⚠️ GitHub Copilot CLI installed but not functional (may need authentication)"
+              echo "❌ Failed to install GitHub Copilot CLI extension"
               echo "COPILOT_AVAILABLE=false" >> $GITHUB_ENV
+              exit 0
+            fi
+          fi
+          
+          # Test Copilot functionality with authentication
+          echo "🧪 Testing GitHub Copilot CLI functionality..."
+          echo "GITHUB_TOKEN is: $(if [ -n "$GITHUB_TOKEN" ]; then echo 'present'; else echo 'missing'; fi)"
+          
+          # Try basic Copilot command
+          if timeout 30s gh copilot --help >/dev/null 2>&1; then
+            echo "✅ GitHub Copilot CLI help command works"
+            
+            # Test suggest command with simple example
+            echo "🧪 Testing Copilot suggest functionality..."
+            TEST_RESULT=$(timeout 30s gh copilot suggest "write a simple hello world function in JavaScript" 2>&1 || echo "TIMEOUT_OR_ERROR")
+            
+            if [[ "$TEST_RESULT" == *"TIMEOUT_OR_ERROR"* ]] || [[ "$TEST_RESULT" == *"error"* ]] || [[ "$TEST_RESULT" == *"denied"* ]]; then
+              echo "⚠️ Copilot suggest test failed: $TEST_RESULT"
+              echo "🔄 This might be due to Copilot subscription or authentication limits"
+              echo "COPILOT_AVAILABLE=false" >> $GITHUB_ENV
+            else
+              echo "✅ GitHub Copilot suggest is working!"
+              echo "Sample output: ${TEST_RESULT:0:100}..."
+              echo "COPILOT_AVAILABLE=true" >> $GITHUB_ENV
             fi
           else
-            echo "⚠️ GitHub Copilot CLI extension not available, will use fallback methods"
+            echo "❌ GitHub Copilot CLI not functional"
             echo "COPILOT_AVAILABLE=false" >> $GITHUB_ENV
           fi
+          
+          echo "Final COPILOT_AVAILABLE status: $(grep COPILOT_AVAILABLE $GITHUB_ENV | tail -1)"
 
       - name: Generate security fixes
         id: generate-fixes
@@ -229,10 +259,12 @@ jobs:
                 # PRIMARY APPROACH: Use GitHub Copilot to generate actual code fixes
                 COPILOT_FIX_APPLIED=false
                 echo "🤖 Attempting GitHub Copilot fix generation (primary approach)..."
+                echo "🔍 Debug: COPILOT_AVAILABLE = '$COPILOT_AVAILABLE'"
+                echo "🔍 Debug: Environment variables containing COPILOT:"
+                env | grep -i copilot || echo "No COPILOT env vars found"
                 
-                # Try Copilot regardless of detection (it might work even if detection failed)
-                if [ "$COPILOT_AVAILABLE" = "true" ] || [ "$COPILOT_AVAILABLE" != "false" ]; then
-                  echo "Generating AI-powered code fix using GitHub Copilot..."
+                # Always try Copilot first - be aggressive about attempting it
+                echo "🚀 Attempting GitHub Copilot suggest (regardless of availability flag)..."
                   
                   # Read the vulnerable code context
                   if [ -f "$FILE_PATH" ]; then
@@ -263,8 +295,13 @@ jobs:
                     echo "" >> /tmp/copilot_prompt.txt
                     echo "Respond with just the corrected code, no explanations." >> /tmp/copilot_prompt.txt
                     
-                    # Try to get Copilot fix suggestion
-                    if gh copilot suggest "$(cat /tmp/copilot_prompt.txt)" > /tmp/copilot_fix.txt 2>/dev/null; then
+                    # Try to get Copilot fix suggestion with detailed error reporting
+                    echo "📝 Copilot prompt preview:"
+                    head -10 /tmp/copilot_prompt.txt
+                    echo "..."
+                    
+                    echo "🔄 Executing: gh copilot suggest..."
+                    if gh copilot suggest "$(cat /tmp/copilot_prompt.txt)" > /tmp/copilot_fix.txt 2>/tmp/copilot_error.txt; then
                       echo "✅ GitHub Copilot provided code fix suggestion"
                       echo "Copilot suggested fix:"
                       cat /tmp/copilot_fix.txt
@@ -292,14 +329,18 @@ jobs:
                       echo "✅ Created Copilot-powered security fix note: $FILE_PATH.security-note"
                       
                     else
-                      echo "⚠️ GitHub Copilot suggestion failed, will use pattern-based approach"
+                      echo "❌ GitHub Copilot suggestion failed!"
+                      echo "🔍 Error details:"
+                      cat /tmp/copilot_error.txt 2>/dev/null || echo "No error details available"
+                      echo "🔄 Will use pattern-based approach as fallback"
                     fi
                   else
-                    echo "⚠️ Could not read file $FILE_PATH for Copilot analysis"
+                    echo "❌ Could not read file $FILE_PATH for Copilot analysis"
+                    echo "📂 Current directory contents:"
+                    ls -la
+                    echo "📂 Looking for file: $FILE_PATH"
+                    [ -f "$FILE_PATH" ] && echo "✅ File exists" || echo "❌ File not found"
                   fi
-                else
-                  echo "ℹ️ GitHub Copilot not available, using pattern-based security fixes"
-                fi
                 
                 # Only use pattern-based fixes as fallback when Copilot fails
                 if [ "$COPILOT_FIX_APPLIED" = "false" ]; then
