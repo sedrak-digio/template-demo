@@ -43,10 +43,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Fetch CodeQL alerts from GitHub Security API
+          # Fetch security alerts from GitHub APIs
           echo "Fetching security alerts..."
           
-          ALERTS=$(gh api graphql -f query='
+          # Fetch vulnerability alerts (Dependabot) using GraphQL
+          VULNERABILITY_ALERTS=$(gh api graphql -f query='
           query($owner: String!, $repo: String!) {
             repository(owner: $owner, name: $repo) {
               vulnerabilityAlerts(first: 20, states: OPEN) {
@@ -71,37 +72,24 @@ jobs:
                   vulnerableRequirements
                 }
               }
-              codeScanning {
-                alerts(first: 20, states: OPEN) {
-                  nodes {
-                    id
-                    rule {
-                      id
-                      description
-                      severity
-                    }
-                    message {
-                      text
-                    }
-                    locations(first: 1) {
-                      nodes {
-                        path
-                        startLine
-                        endLine
-                      }
-                    }
-                  }
-                }
-              }
             }
-          }' -f owner="${{ github.repository_owner }}" -f repo="${{ github.event.repository.name }}" --jq '.data.repository')
+          }' -f owner="${{ github.repository_owner }}" -f repo="${{ github.event.repository.name }}" --jq '.data.repository.vulnerabilityAlerts')
+          
+          # Fetch code scanning alerts (CodeQL) using REST API
+          CODE_SCANNING_ALERTS=$(gh api repos/${{ github.repository }}/code-scanning/alerts?state=open --jq '.')
+          
+          # Combine both alert types into a single JSON structure
+          COMBINED_ALERTS=$(jq -n --argjson vuln "$VULNERABILITY_ALERTS" --argjson code "$CODE_SCANNING_ALERTS" '{
+            vulnerabilityAlerts: {alerts: $vuln},
+            codeScanning: {alerts: {nodes: $code}}
+          }')
           
           echo "alerts<<EOF" >> $GITHUB_OUTPUT
-          echo "$ALERTS" >> $GITHUB_OUTPUT
+          echo "$COMBINED_ALERTS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
           
           # Check if we have any alerts
-          VULN_COUNT=$(echo "$ALERTS" | jq -r '(.vulnerabilityAlerts.nodes | length) + (.codeScanning.alerts.nodes | length)')
+          VULN_COUNT=$(echo "$COMBINED_ALERTS" | jq -r '(.vulnerabilityAlerts.alerts.nodes | length) + (.codeScanning.alerts.nodes | length)')
           if [ "$VULN_COUNT" -gt 0 ]; then
             echo "has-alerts=true" >> $GITHUB_OUTPUT
             echo "Found $VULN_COUNT security vulnerabilities"
@@ -207,10 +195,10 @@ jobs:
                 
               else
                 # Handle code scanning vulnerabilities
-                FILE_PATH=$(echo "$alert" | jq -r '.locations.nodes[0].path')
-                START_LINE=$(echo "$alert" | jq -r '.locations.nodes[0].startLine')
+                FILE_PATH=$(echo "$alert" | jq -r '.most_recent_instance.location.path // .locations[0].path // "unknown"')
+                START_LINE=$(echo "$alert" | jq -r '.most_recent_instance.location.start_line // .locations[0].start_line // 1')
                 RULE_ID=$(echo "$alert" | jq -r '.rule.id')
-                DESCRIPTION=$(echo "$alert" | jq -r '.message.text')
+                DESCRIPTION=$(echo "$alert" | jq -r '.most_recent_instance.message.text // .message.text // "Security vulnerability detected"')
                 
                 echo "Attempting to fix code vulnerability in $FILE_PATH:$START_LINE"
                 
@@ -314,7 +302,7 @@ jobs:
           else
             echo '${{ needs.fetch-vulnerabilities.outputs.vulnerabilities }}' | jq -r '
               .codeScanning.alerts.nodes[] |
-              "- **" + .rule.id + "** in `" + .locations.nodes[0].path + ":" + (.locations.nodes[0].startLine | tostring) + "`: " + .message.text
+              "- **" + .rule.id + "** in `" + (.most_recent_instance.location.path // .locations[0].path // "unknown") + ":" + ((.most_recent_instance.location.start_line // .locations[0].start_line // 1) | tostring) + "`: " + (.most_recent_instance.message.text // .message.text // "Security vulnerability detected")
             ' >> /tmp/pr_body.md
           fi
           
