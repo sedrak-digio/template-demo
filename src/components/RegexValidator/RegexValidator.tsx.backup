@@ -15,7 +15,17 @@ export default function RegexValidator({ onValidate }: RegexValidatorProps) {
   const validateInput = () => {
     setIsValidating(true);
     setValidationResult('');
-"```typescript\n    try {\n      // CRITICAL VULNERABILITY: Catastrophic backtracking regex (ReDoS)\n      // This regex can cause exponential time complexity with certain inputs\n      // Attack example: \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab\"\n      const safeRegex = /^a+b$/;\n      \n      // SECURITY ISSUE: User input tested against safe regex\n      const startTime = Date.now();\n      const isValid = safeRegex.test(userInput);\n      const endTime = Date.now();\n```"
+    
+    try {
+      // CRITICAL VULNERABILITY: Catastrophic backtracking regex (ReDoS)
+      // This regex can cause exponential time complexity with certain inputs
+      // Attack example: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab"
+      const vulnerableRegex = /^(a+)+b$/;
+      
+      // SECURITY ISSUE: User input tested against vulnerable regex
+      const startTime = Date.now();
+      const isValid = vulnerableRegex.test(userInput);
+      const endTime = Date.now();
       
       setValidationResult(`Validation ${isValid ? 'passed' : 'failed'} in ${endTime - startTime}ms`);
       
@@ -117,3 +127,4 @@ export default function RegexValidator({ onValidate }: RegexValidatorProps) {
       )}
     </Card>
   );
+}
