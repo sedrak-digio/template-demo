@@ -129,52 +129,62 @@ jobs:
 
       - name: Setup GitHub Copilot CLI
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
         run: |
+          echo "🤖 Setting up GitHub Copilot CLI with Personal Access Token authentication..."
+          
+          # Check if COPILOT_TOKEN is provided
+          if [ -z "$COPILOT_TOKEN" ]; then
+            echo "❌ COPILOT_TOKEN secret not found!"
+            echo ""
+            echo "🔧 SETUP REQUIRED:"
+            echo "1. Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)"
+            echo "2. Generate new token with 'copilot' scope"
+            echo "3. Add token as repository secret named 'COPILOT_TOKEN'"
+            echo "4. Re-run this workflow"
+            echo ""
+            echo "🔗 Direct link: https://github.com/settings/tokens"
+            exit 1
+          fi
+          
           # Install GitHub Copilot CLI extension
-          echo "🔧 Installing GitHub Copilot CLI extension..."
-          
-          # Check if already installed
-          if gh extension list | grep -q "gh-copilot"; then
-            echo "✅ GitHub Copilot CLI already installed"
+          echo "📦 Installing GitHub Copilot CLI extension..."
+          if gh extension install github/gh-copilot 2>/dev/null || gh extension list | grep -q "gh-copilot"; then
+            echo "✅ GitHub Copilot CLI extension ready"
           else
-            echo "📦 Installing GitHub Copilot CLI extension..."
-            if gh extension install github/gh-copilot; then
-              echo "✅ GitHub Copilot CLI extension installed successfully"
-            else
-              echo "❌ Failed to install GitHub Copilot CLI extension"
-              echo "COPILOT_AVAILABLE=false" >> $GITHUB_ENV
-              exit 0
-            fi
+            echo "❌ Failed to install GitHub Copilot CLI extension"
+            exit 1
           fi
           
-          # Test Copilot functionality with authentication
+          # Authenticate GitHub CLI with the Copilot token
+          echo "🔐 Authenticating GitHub CLI with Copilot token..."
+          echo "$COPILOT_TOKEN" | gh auth login --with-token
+          
+          if gh auth status; then
+            echo "✅ GitHub CLI authenticated successfully"
+          else
+            echo "❌ GitHub CLI authentication failed"
+            exit 1
+          fi
+          
+          # Test Copilot functionality
           echo "🧪 Testing GitHub Copilot CLI functionality..."
-          echo "GITHUB_TOKEN is: $(if [ -n "$GITHUB_TOKEN" ]; then echo 'present'; else echo 'missing'; fi)"
-          
-          # Try basic Copilot command
-          if timeout 30s gh copilot --help >/dev/null 2>&1; then
-            echo "✅ GitHub Copilot CLI help command works"
-            
-            # Test suggest command with simple example
-            echo "🧪 Testing Copilot suggest functionality..."
-            TEST_RESULT=$(timeout 30s gh copilot suggest "write a simple hello world function in JavaScript" 2>&1 || echo "TIMEOUT_OR_ERROR")
-            
-            if [[ "$TEST_RESULT" == *"TIMEOUT_OR_ERROR"* ]] || [[ "$TEST_RESULT" == *"error"* ]] || [[ "$TEST_RESULT" == *"denied"* ]]; then
-              echo "⚠️ Copilot suggest test failed: $TEST_RESULT"
-              echo "🔄 This might be due to Copilot subscription or authentication limits"
-              echo "COPILOT_AVAILABLE=false" >> $GITHUB_ENV
-            else
-              echo "✅ GitHub Copilot suggest is working!"
-              echo "Sample output: ${TEST_RESULT:0:100}..."
-              echo "COPILOT_AVAILABLE=true" >> $GITHUB_ENV
-            fi
+          if timeout 60s gh copilot suggest "write a simple hello world function in JavaScript" >/tmp/copilot_test.txt 2>&1; then
+            echo "✅ GitHub Copilot CLI is working!"
+            echo "Sample output preview:"
+            head -5 /tmp/copilot_test.txt
+            echo "COPILOT_AVAILABLE=true" >> $GITHUB_ENV
           else
-            echo "❌ GitHub Copilot CLI not functional"
-            echo "COPILOT_AVAILABLE=false" >> $GITHUB_ENV
+            echo "❌ GitHub Copilot CLI test failed"
+            echo "Error details:"
+            cat /tmp/copilot_test.txt 2>/dev/null || echo "No error details available"
+            echo ""
+            echo "🔍 Common issues:"
+            echo "- Token may not have 'copilot' scope"
+            echo "- GitHub Copilot may not be enabled for your account"
+            echo "- Token may be expired or invalid"
+            exit 1
           fi
-          
-          echo "Final COPILOT_AVAILABLE status: $(grep COPILOT_AVAILABLE $GITHUB_ENV | tail -1)"
 
       - name: Generate security fixes
         id: generate-fixes
@@ -256,15 +266,16 @@ jobs:
                 echo "" >> /tmp/fix_prompt.txt
                 echo "Please provide a secure code fix that addresses this vulnerability while maintaining functionality." >> /tmp/fix_prompt.txt
                 
-                # PRIMARY APPROACH: Use GitHub Copilot to generate actual code fixes
+                # COPILOT-ONLY APPROACH: Generate AI-powered security fixes
                 COPILOT_FIX_APPLIED=false
-                echo "🤖 Attempting GitHub Copilot fix generation (primary approach)..."
-                echo "🔍 Debug: COPILOT_AVAILABLE = '$COPILOT_AVAILABLE'"
-                echo "🔍 Debug: Environment variables containing COPILOT:"
-                env | grep -i copilot || echo "No COPILOT env vars found"
+                echo "🤖 Generating GitHub Copilot security fix (Copilot-only mode)..."
                 
-                # Always try Copilot first - be aggressive about attempting it
-                echo "🚀 Attempting GitHub Copilot suggest (regardless of availability flag)..."
+                # Verify Copilot is available (should be from setup step)
+                if [ "$COPILOT_AVAILABLE" != "true" ]; then
+                  echo "❌ GitHub Copilot not available - this workflow requires Copilot setup"
+                  echo "Please ensure COPILOT_TOKEN secret is configured correctly"
+                  exit 1
+                fi
                   
                   # Read the vulnerable code context
                   if [ -f "$FILE_PATH" ]; then
@@ -332,7 +343,8 @@ jobs:
                       echo "❌ GitHub Copilot suggestion failed!"
                       echo "🔍 Error details:"
                       cat /tmp/copilot_error.txt 2>/dev/null || echo "No error details available"
-                      echo "🔄 Will use pattern-based approach as fallback"
+                      echo "❌ This workflow requires GitHub Copilot - no fallback patterns"
+                      exit 1
                     fi
                   else
                     echo "❌ Could not read file $FILE_PATH for Copilot analysis"
@@ -340,58 +352,8 @@ jobs:
                     ls -la
                     echo "📂 Looking for file: $FILE_PATH"
                     [ -f "$FILE_PATH" ] && echo "✅ File exists" || echo "❌ File not found"
+                    exit 1
                   fi
-                
-                # Only use pattern-based fixes as fallback when Copilot fails
-                if [ "$COPILOT_FIX_APPLIED" = "false" ]; then
-                  echo "⚠️ Copilot fix failed, falling back to pattern-based security fixes for rule: $RULE_ID"
-                  PATTERN_FIX_APPLIED=false
-                
-                # JavaScript/TypeScript security patterns
-                if [[ "$RULE_ID" == *"js/incomplete-sanitization"* ]]; then
-                  echo "📋 Applying sanitization fix pattern for incomplete sanitization..."
-                  echo "// TODO: SECURITY FIX - Add proper input sanitization" >> "$FILE_PATH.security-note"
-                  echo "// Rule: $RULE_ID" >> "$FILE_PATH.security-note"
-                  echo "// Issue: $DESCRIPTION" >> "$FILE_PATH.security-note"
-                  echo "// Recommendation: Use proper sanitization library (e.g., DOMPurify, validator.js)" >> "$FILE_PATH.security-note"
-                  PATTERN_FIX_APPLIED=true
-                elif [[ "$RULE_ID" == *"js/unsafe-dynamic-method-access"* ]]; then
-                  echo "📋 Applying safe method access pattern..."
-                  echo "// TODO: SECURITY FIX - Avoid unsafe dynamic method access" >> "$FILE_PATH.security-note"
-                  echo "// Rule: $RULE_ID" >> "$FILE_PATH.security-note"
-                  echo "// Issue: $DESCRIPTION" >> "$FILE_PATH.security-note"
-                  echo "// Recommendation: Use explicit method calls or whitelist approach" >> "$FILE_PATH.security-note"
-                  PATTERN_FIX_APPLIED=true
-                elif [[ "$RULE_ID" == *"js/xss"* ]] || [[ "$RULE_ID" == *"cross-site-scripting"* ]]; then
-                  echo "📋 Applying XSS prevention pattern..."
-                  echo "// TODO: SECURITY FIX - Prevent XSS vulnerability" >> "$FILE_PATH.security-note"
-                  echo "// Rule: $RULE_ID" >> "$FILE_PATH.security-note"
-                  echo "// Issue: $DESCRIPTION" >> "$FILE_PATH.security-note"
-                  echo "// Recommendation: Escape user input, use React's JSX auto-escaping, or sanitize HTML" >> "$FILE_PATH.security-note"
-                  PATTERN_FIX_APPLIED=true
-                elif [[ "$RULE_ID" == *"js/sql-injection"* ]]; then
-                  echo "📋 Applying SQL injection prevention pattern..."
-                  echo "// TODO: SECURITY FIX - Prevent SQL injection" >> "$FILE_PATH.security-note"
-                  echo "// Rule: $RULE_ID" >> "$FILE_PATH.security-note"
-                  echo "// Issue: $DESCRIPTION" >> "$FILE_PATH.security-note"
-                  echo "// Recommendation: Use parameterized queries or ORM with proper escaping" >> "$FILE_PATH.security-note"
-                  PATTERN_FIX_APPLIED=true
-                else
-                  echo "📋 Applying generic security fix pattern..."
-                  echo "// TODO: SECURITY FIX - Address security vulnerability" >> "$FILE_PATH.security-note"
-                  echo "// Rule: $RULE_ID" >> "$FILE_PATH.security-note"
-                  echo "// Issue: $DESCRIPTION" >> "$FILE_PATH.security-note"
-                  echo "// Location: Line $START_LINE" >> "$FILE_PATH.security-note"
-                  echo "// Recommendation: Review and fix the security issue identified by CodeQL" >> "$FILE_PATH.security-note"
-                  PATTERN_FIX_APPLIED=true
-                fi
-                
-                  if [ "$PATTERN_FIX_APPLIED" = "true" ]; then
-                    echo "✅ Created fallback pattern-based security fix note: $FILE_PATH.security-note"
-                  fi
-                else
-                  echo "✅ Using Copilot-generated fix (primary approach successful)"
-                fi
                 
                 FIXES_APPLIED=true
               fi

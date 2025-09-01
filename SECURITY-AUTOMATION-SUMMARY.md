@@ -172,25 +172,44 @@ The project includes intentional security vulnerabilities in the UI components f
 
 ### Repository Setup Requirements
 
-**CRITICAL**: Before the security automation workflows can create pull requests, you must configure repository permissions:
+**CRITICAL**: This security automation requires both repository permissions AND GitHub Copilot authentication:
 
+#### 1. Repository Workflow Permissions
 1. Go to **Repository Settings → Actions → General → Workflow permissions**
 2. Change from **"Read repository contents and packages permissions"** to **"Read and write permissions"**
 3. Ensure **"Allow GitHub Actions to create and approve pull requests"** is **UNCHECKED** (for security)
 4. Click **"Save"**
 
+#### 2. GitHub Copilot Authentication (REQUIRED)
+**This workflow uses GitHub Copilot CLI exclusively - no fallback patterns.**
+
+1. **Create Personal Access Token**:
+   - Go to https://github.com/settings/tokens
+   - Generate token with `copilot`, `repo`, and `workflow` scopes
+   - Copy the token (you won't see it again!)
+
+2. **Add Repository Secret**:
+   - Go to Repository Settings → Secrets and variables → Actions
+   - Add new secret: Name = `COPILOT_TOKEN`, Value = your PAT
+   - Click "Add secret"
+
+3. **Verify Setup**:
+   - Trigger workflow and check for success message:
+   - `✅ GitHub Copilot CLI is working!`
+
+**📋 Detailed Setup Guide**: See [COPILOT-SETUP.md](./COPILOT-SETUP.md)
+
 **Common Issues:**
-- **Error**: `"GitHub Actions is not permitted to create or approve pull requests"`
-- **Root Cause**: Repository has `default_workflow_permissions: "read"`
-- **Solution**: Update to `"write"` permissions via repository settings
+- **Error**: `"COPILOT_TOKEN secret not found!"` → Add the repository secret
+- **Error**: `"Token may not have 'copilot' scope"` → Recreate PAT with proper scopes  
+- **Error**: `"GitHub Actions is not permitted to create or approve pull requests"` → Fix repository permissions (above)
 
 **Verification Commands:**
 ```bash
-# Check current permissions
+# Check repository permissions
 gh api repos/OWNER/REPO/actions/permissions/workflow
 
-# Expected result after fix:
-# {"default_workflow_permissions":"write","can_approve_pull_request_reviews":false}
+# Expected result: {"default_workflow_permissions":"write",...}
 ```
 
 ### Monitoring Automation
