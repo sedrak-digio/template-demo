@@ -279,24 +279,27 @@ jobs:
                     echo "Reading code context from $FILE_PATH lines $CONTEXT_START-$CONTEXT_END"
                     sed -n "${CONTEXT_START},${CONTEXT_END}p" "$FILE_PATH" > /tmp/code_context.txt
                     
-                    # Create enhanced prompt for Copilot with actual code
-                    echo "Fix this security vulnerability in the following code:" > /tmp/copilot_prompt.txt
+                    # Create enhanced prompt for automatic code fixing
+                    echo "SECURITY VULNERABILITY AUTO-FIX REQUEST" > /tmp/copilot_prompt.txt
                     echo "" >> /tmp/copilot_prompt.txt
-                    echo "File: $FILE_PATH" >> /tmp/copilot_prompt.txt
+                    echo "File: $FILE_PATH" >> /tmp/copilot_prompt.txt  
                     echo "Vulnerable Line: $START_LINE" >> /tmp/copilot_prompt.txt
                     echo "Security Rule: $RULE_ID" >> /tmp/copilot_prompt.txt
                     echo "Issue: $DESCRIPTION" >> /tmp/copilot_prompt.txt
                     echo "" >> /tmp/copilot_prompt.txt
-                    echo "Current Code Context:" >> /tmp/copilot_prompt.txt
+                    echo "ORIGINAL CODE CONTEXT (lines $CONTEXT_START-$CONTEXT_END):" >> /tmp/copilot_prompt.txt
                     cat /tmp/code_context.txt >> /tmp/copilot_prompt.txt
                     echo "" >> /tmp/copilot_prompt.txt
-                    echo "Please provide the complete fixed version of this code that:" >> /tmp/copilot_prompt.txt
-                    echo "1. Addresses the security vulnerability" >> /tmp/copilot_prompt.txt
-                    echo "2. Maintains the same functionality" >> /tmp/copilot_prompt.txt
-                    echo "3. Follows security best practices" >> /tmp/copilot_prompt.txt
-                    echo "4. Is production-ready" >> /tmp/copilot_prompt.txt
+                    echo "INSTRUCTIONS:" >> /tmp/copilot_prompt.txt
+                    echo "1. Fix the security vulnerability on line $START_LINE" >> /tmp/copilot_prompt.txt
+                    echo "2. Maintain the same functionality and code structure" >> /tmp/copilot_prompt.txt
+                    echo "3. Follow security best practices" >> /tmp/copilot_prompt.txt
+                    echo "4. Preserve all imports, comments, and formatting" >> /tmp/copilot_prompt.txt
                     echo "" >> /tmp/copilot_prompt.txt
-                    echo "Respond with just the corrected code, no explanations." >> /tmp/copilot_prompt.txt
+                    echo "REQUIRED RESPONSE FORMAT:" >> /tmp/copilot_prompt.txt
+                    echo "Return ONLY the corrected code lines ($CONTEXT_START-$CONTEXT_END) with the security fix applied." >> /tmp/copilot_prompt.txt
+                    echo "Do not include line numbers, explanations, or markdown formatting." >> /tmp/copilot_prompt.txt
+                    echo "The response should be ready to directly replace the vulnerable code section." >> /tmp/copilot_prompt.txt
                     
                     # Generate AI fix using GitHub Models API
                     echo "📝 Security fix prompt preview:"
@@ -321,31 +324,52 @@ jobs:
                       -d "{\"model\":\"gpt-4o\",\"messages\":[{\"role\":\"user\",\"content\":$ESCAPED_PROMPT}],\"max_tokens\":1000,\"temperature\":0.1}" \
                       -o /tmp/models_response.json \
                       && jq -e '.choices[0].message.content' /tmp/models_response.json > /tmp/models_fix.txt 2>/tmp/models_error.txt; then
-                      echo "✅ GitHub Models API provided AI code fix suggestion"
+                      echo "✅ GitHub Models API provided AI code fix"
                       echo "AI-generated security fix:"
                       cat /tmp/models_fix.txt
+                      echo ""
                       
-                      # Create a security note with the AI-generated suggestion
-                      echo "// AI-GENERATED SECURITY FIX (GitHub Models API)" > "$FILE_PATH.security-note"
-                      echo "// Rule: $RULE_ID" >> "$FILE_PATH.security-note"
-                      echo "// Issue: $DESCRIPTION" >> "$FILE_PATH.security-note"
-                      echo "// Location: Line $START_LINE" >> "$FILE_PATH.security-note"
-                      echo "//" >> "$FILE_PATH.security-note"
-                      echo "// ORIGINAL VULNERABLE CODE (lines $CONTEXT_START-$CONTEXT_END):" >> "$FILE_PATH.security-note"
-                      sed 's/^/\/\/ /' /tmp/code_context.txt >> "$FILE_PATH.security-note"
-                      echo "//" >> "$FILE_PATH.security-note"
-                      echo "// AI-GENERATED SECURITY FIX:" >> "$FILE_PATH.security-note"
-                      sed 's/^/\/\/ /' /tmp/models_fix.txt >> "$FILE_PATH.security-note"
-                      echo "//" >> "$FILE_PATH.security-note"
-                      echo "// INSTRUCTIONS:" >> "$FILE_PATH.security-note"
-                      echo "// 1. Review the AI-generated fix above" >> "$FILE_PATH.security-note"
-                      echo "// 2. Apply the fix to $FILE_PATH around line $START_LINE" >> "$FILE_PATH.security-note"
-                      echo "// 3. Test thoroughly to ensure functionality is preserved" >> "$FILE_PATH.security-note"
-                      echo "// 4. Remove this security note file after applying the fix" >> "$FILE_PATH.security-note"
-                      echo "//" >> "$FILE_PATH.security-note"
-                      echo "// Generated by GitHub Models API: $(date -u)" >> "$FILE_PATH.security-note"
+                      # Apply the AI fix directly to the file
+                      echo "🔧 Applying AI-generated security fix to $FILE_PATH..."
+                      
+                      # Create backup of original file
+                      cp "$FILE_PATH" "$FILE_PATH.backup"
+                      
+                      # Create the fixed file by replacing the vulnerable section
+                      # Get content before vulnerable section
+                      if [ $CONTEXT_START -gt 1 ]; then
+                        sed -n "1,$((CONTEXT_START-1))p" "$FILE_PATH" > "$FILE_PATH.fixed"
+                      else
+                        > "$FILE_PATH.fixed"  # Create empty file if starting from line 1
+                      fi
+                      
+                      # Add the AI-generated fixed code
+                      cat /tmp/models_fix.txt >> "$FILE_PATH.fixed"
+                      
+                      # Add content after vulnerable section
+                      TOTAL_LINES=$(wc -l < "$FILE_PATH")
+                      if [ $CONTEXT_END -lt $TOTAL_LINES ]; then
+                        sed -n "$((CONTEXT_END+1)),${TOTAL_LINES}p" "$FILE_PATH" >> "$FILE_PATH.fixed"
+                      fi
+                      
+                      # Replace original file with fixed version
+                      mv "$FILE_PATH.fixed" "$FILE_PATH"
+                      
+                      # Create a summary note about what was fixed
+                      echo "// AUTO-APPLIED AI SECURITY FIX - $(date -u)" > "$FILE_PATH.ai-fix-summary"
+                      echo "// Rule: $RULE_ID" >> "$FILE_PATH.ai-fix-summary"  
+                      echo "// Issue: $DESCRIPTION" >> "$FILE_PATH.ai-fix-summary"
+                      echo "// Fixed Lines: $CONTEXT_START-$CONTEXT_END" >> "$FILE_PATH.ai-fix-summary"
+                      echo "// Backup: $FILE_PATH.backup" >> "$FILE_PATH.ai-fix-summary"
+                      echo "//" >> "$FILE_PATH.ai-fix-summary"
+                      echo "// WHAT WAS FIXED:" >> "$FILE_PATH.ai-fix-summary"
+                      echo "// AI automatically applied security fix to vulnerable code" >> "$FILE_PATH.ai-fix-summary"
+                      echo "// Original code backed up to $FILE_PATH.backup for reference" >> "$FILE_PATH.ai-fix-summary"
+                      echo "// Review the changes and test thoroughly before merging" >> "$FILE_PATH.ai-fix-summary"
                       AI_FIX_APPLIED=true
-                      echo "✅ Created AI-powered security fix note: $FILE_PATH.security-note"
+                      echo "✅ AI security fix automatically applied to $FILE_PATH"
+                      echo "📋 Fix summary created: $FILE_PATH.ai-fix-summary"
+                      echo "💾 Original code backed up: $FILE_PATH.backup"
                       
                     else
                       echo "❌ GitHub Models API security fix generation failed!"
@@ -375,14 +399,17 @@ jobs:
           
           echo "fixes-applied=$FIXES_APPLIED" >> $GITHUB_OUTPUT
           
-          # Add any generated security fix files to git
-          SECURITY_FILES=$(find . -name "*.security-note" -type f 2>/dev/null)
-          if [ -n "$SECURITY_FILES" ]; then
-            echo "Adding generated security fix files to git..."
-            echo "Found security files: $SECURITY_FILES"
-            find . -name "*.security-note" -type f -exec git add {} \;
+          # Add any generated AI fix files and summaries to git
+          AI_FILES=$(find . \( -name "*.ai-fix-summary" -o -name "*.backup" \) -type f 2>/dev/null)
+          if [ -n "$AI_FILES" ]; then
+            echo "Adding AI-generated fix files to git..."
+            echo "Found AI fix files: $AI_FILES"
+            find . -name "*.ai-fix-summary" -type f -exec git add {} \;
+            find . -name "*.backup" -type f -exec git add {} \;
+            echo "Adding modified source files with AI fixes..."
+            git add -A  # Add all modified files (the actual fixed code)
           else
-            echo "No security fix files found to stage"
+            echo "No AI fix files found to stage"
           fi
           
           # Check if any files were modified (including staged files)
@@ -401,7 +428,12 @@ jobs:
             git config --local user.email "action@github.com"
             git config --local user.name "GitHub Action"
             git add .
-            git commit -m "fix: auto-fix ${{ matrix.fix-type }} issues with security recommendations - 🔒 Auto-generated fix"
+            git commit -m "fix: AI auto-applied security fixes for ${{ matrix.fix-type }} vulnerabilities
+
+- AI automatically fixed security vulnerabilities using GitHub Models API
+- Original code backed up to *.backup files for reference  
+- Fix summaries available in *.ai-fix-summary files
+- 🤖 Generated and applied by GitHub Models GPT-4o"
             
             # Push branch
             git push origin "$BRANCH_NAME"
@@ -426,27 +458,32 @@ jobs:
           PR_TITLE="🔒 Auto-fix: ${{ matrix.description }} (${VULN_COUNT} issues)"
           
           cat > /tmp/pr_body.md << EOF
-          ## 🔒 Automated Security Vulnerability Fixes
+          ## 🤖 AI-Applied Security Vulnerability Fixes
 
-          This PR contains automated fixes for **${{ matrix.description }}** detected by our security scanning.
+          This PR contains **AI-generated and automatically applied** security fixes for **${{ matrix.description }}** vulnerabilities detected by CodeQL analysis.
 
           ### 📊 Summary
           - **Vulnerability Type**: ${{ matrix.description }}
-          - **Vulnerabilities Addressed**: ${VULN_COUNT}
-          - **Auto-generated**: Yes ✅
+          - **Vulnerabilities Fixed**: ${VULN_COUNT}
+          - **AI Model**: GitHub Models GPT-4o ✨
+          - **Auto-Applied**: Yes ✅
           - **Requires Review**: Yes ⚠️
 
-          ### 🔍 What was fixed?
+          ### 🔍 What the AI fixed?
           
-          The following security issues were automatically addressed:
-          - Security recommendations and fix notes have been added
-          - Files have been marked for manual review where needed
+          🤖 **GitHub Models GPT-4o automatically:**
+          - **Analyzed** the vulnerable code and security context
+          - **Generated** secure replacement code that maintains functionality  
+          - **Applied** the fixes directly to the source files
+          - **Created** backup files (\`*.backup\`) with original code
+          - **Generated** fix summaries (\`*.ai-fix-summary\`) with details
           
           ### 📋 Next Steps
-          1. Review the generated fix notes (\`*.security-note\` files)
-          2. Implement the recommended security fixes
-          3. Test thoroughly before merging
-          4. Remove the security note files once fixes are implemented
+          1. **Review the AI-applied changes** in the source code files
+          2. **Check backup files** (\`*.backup\`) to see what was changed
+          3. **Read fix summaries** (\`*.ai-fix-summary\`) for technical details  
+          4. **Test thoroughly** to ensure functionality is preserved
+          5. **Verify security** - AI fixes should resolve the vulnerabilities
 
           **Branch**: \`${BRANCH_NAME}\`
           **Generated**: $(date -u)
