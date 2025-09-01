@@ -296,10 +296,14 @@ jobs:
                     echo "3. Follow security best practices" >> /tmp/copilot_prompt.txt
                     echo "4. Preserve all imports, comments, and formatting" >> /tmp/copilot_prompt.txt
                     echo "" >> /tmp/copilot_prompt.txt
-                    echo "REQUIRED RESPONSE FORMAT:" >> /tmp/copilot_prompt.txt
-                    echo "Return ONLY the corrected code lines ($CONTEXT_START-$CONTEXT_END) with the security fix applied." >> /tmp/copilot_prompt.txt
-                    echo "Do not include line numbers, explanations, or markdown formatting." >> /tmp/copilot_prompt.txt
-                    echo "The response should be ready to directly replace the vulnerable code section." >> /tmp/copilot_prompt.txt
+                    echo "CRITICAL RESPONSE FORMAT REQUIREMENTS:" >> /tmp/copilot_prompt.txt
+                    echo "1. Return ONLY the exact TypeScript/JavaScript code to replace lines $CONTEXT_START-$CONTEXT_END" >> /tmp/copilot_prompt.txt
+                    echo "2. NO markdown code blocks (no \`\`\`typescript or \`\`\`)" >> /tmp/copilot_prompt.txt
+                    echo "3. NO explanations, comments about the vulnerability, or security notes" >> /tmp/copilot_prompt.txt
+                    echo "4. NO line numbers or prefixes" >> /tmp/copilot_prompt.txt
+                    echo "5. Start directly with the code content" >> /tmp/copilot_prompt.txt
+                    echo "6. Maintain exact indentation and formatting of original code" >> /tmp/copilot_prompt.txt
+                    echo "7. Response must be valid, executable code ready for direct file replacement" >> /tmp/copilot_prompt.txt
                     
                     # Generate AI fix using GitHub Models API
                     echo "📝 Security fix prompt preview:"
@@ -325,12 +329,37 @@ jobs:
                       -o /tmp/models_response.json \
                       && jq -e '.choices[0].message.content' /tmp/models_response.json > /tmp/models_fix.txt 2>/tmp/models_error.txt; then
                       echo "✅ GitHub Models API provided AI code fix"
-                      echo "AI-generated security fix:"
+                      echo "Raw AI response:"
                       cat /tmp/models_fix.txt
                       echo ""
                       
-                      # Apply the AI fix directly to the file
-                      echo "🔧 Applying AI-generated security fix to $FILE_PATH..."
+                      # Clean up AI response - remove markdown formatting and extra content
+                      echo "🧹 Cleaning up AI response format..."
+                      
+                      # Remove markdown code blocks and clean up the response
+                      sed -e 's/^```[a-zA-Z]*//g' \
+                          -e 's/^```$//g' \
+                          -e '/^[[:space:]]*$/d' \
+                          -e 's/^"//g' \
+                          -e 's/"$//g' \
+                          /tmp/models_fix.txt | \
+                      # Remove any lines that look like explanations or comments about vulnerabilities
+                      grep -v -E "(CRITICAL|VULNERABILITY|SECURITY|Attack example|ReDoS)" | \
+                      # Remove lines that start with "// " followed by security-related terms
+                      grep -v -E "^[[:space:]]*//[[:space:]]*(CRITICAL|VULNERABILITY|SECURITY|This|Attack)" > /tmp/models_fix_clean.txt
+                      
+                      echo "Cleaned AI-generated code:"
+                      cat /tmp/models_fix_clean.txt
+                      echo ""
+                      
+                      # Validate that we have non-empty cleaned code
+                      if [ ! -s /tmp/models_fix_clean.txt ]; then
+                        echo "❌ AI response cleaning resulted in empty code - using original response"
+                        cp /tmp/models_fix.txt /tmp/models_fix_clean.txt
+                      fi
+                      
+                      # Apply the cleaned AI fix directly to the file
+                      echo "🔧 Applying cleaned AI-generated security fix to $FILE_PATH..."
                       
                       # Create backup of original file
                       cp "$FILE_PATH" "$FILE_PATH.backup"
@@ -343,8 +372,8 @@ jobs:
                         > "$FILE_PATH.fixed"  # Create empty file if starting from line 1
                       fi
                       
-                      # Add the AI-generated fixed code
-                      cat /tmp/models_fix.txt >> "$FILE_PATH.fixed"
+                      # Add the cleaned AI-generated fixed code
+                      cat /tmp/models_fix_clean.txt >> "$FILE_PATH.fixed"
                       
                       # Add content after vulnerable section
                       TOTAL_LINES=$(wc -l < "$FILE_PATH")
@@ -354,6 +383,34 @@ jobs:
                       
                       # Replace original file with fixed version
                       mv "$FILE_PATH.fixed" "$FILE_PATH"
+                      
+                      # Validate the fixed code with basic syntax checking
+                      echo "🔍 Validating AI-generated code..."
+                      if [ "${FILE_PATH##*.}" = "ts" ] || [ "${FILE_PATH##*.}" = "tsx" ]; then
+                        # TypeScript/TSX file - try basic syntax validation if tsc is available
+                        if command -v npx >/dev/null 2>&1; then
+                          echo "Running TypeScript syntax check..."
+                          if npx tsc --noEmit --skipLibCheck "$FILE_PATH" 2>/tmp/tsc_error.txt; then
+                            echo "✅ TypeScript syntax validation passed"
+                          else
+                            echo "⚠️ TypeScript syntax validation failed:"
+                            cat /tmp/tsc_error.txt
+                            echo "Code was applied but may need manual review"
+                          fi
+                        fi
+                      elif [ "${FILE_PATH##*.}" = "js" ] || [ "${FILE_PATH##*.}" = "jsx" ]; then
+                        # JavaScript file - basic syntax check
+                        if command -v node >/dev/null 2>&1; then
+                          echo "Running JavaScript syntax check..."
+                          if node -c "$FILE_PATH" 2>/tmp/node_error.txt; then
+                            echo "✅ JavaScript syntax validation passed"
+                          else
+                            echo "⚠️ JavaScript syntax validation failed:"
+                            cat /tmp/node_error.txt
+                            echo "Code was applied but may need manual review"
+                          fi
+                        fi
+                      fi
                       
                       # Create a summary note about what was fixed
                       echo "// AUTO-APPLIED AI SECURITY FIX - $(date -u)" > "$FILE_PATH.ai-fix-summary"
