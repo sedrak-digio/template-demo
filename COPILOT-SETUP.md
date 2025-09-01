@@ -20,6 +20,7 @@ This repository's security automation workflow uses **GitHub Copilot CLI** to ge
 3. **Configure Scopes**:
    - ✅ **`copilot`** - GitHub Copilot (REQUIRED)
    - ✅ **`repo`** - Full control of private repositories (for PR creation)
+   - ✅ **`read:org`** - Read org and team membership (required by GitHub CLI)
    - ✅ **`workflow`** - Update GitHub Action workflows
 
 4. **Generate and Copy Token**:
@@ -71,8 +72,8 @@ This repository's security automation workflow uses **GitHub Copilot CLI** to ge
 ### Error: "COPILOT_TOKEN secret not found!"
 - ✅ **Solution**: Complete Step 2 above - add the `COPILOT_TOKEN` repository secret
 
-### Error: "Token may not have 'copilot' scope"
-- ✅ **Solution**: Recreate token with `copilot` scope selected (Step 1.3)
+### Error: "Token may not have 'copilot' scope" or "missing required scope 'read:org'"
+- ✅ **Solution**: Recreate token with all required scopes: `copilot`, `repo`, `read:org`, `workflow`
 
 ### Error: "GitHub Copilot may not be enabled for your account"
 - ✅ **Solution**: Purchase GitHub Copilot subscription or enable in organization settings

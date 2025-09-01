@@ -185,7 +185,7 @@ The project includes intentional security vulnerabilities in the UI components f
 
 1. **Create Personal Access Token**:
    - Go to https://github.com/settings/tokens
-   - Generate token with `copilot`, `repo`, and `workflow` scopes
+   - Generate token with required scopes: `copilot`, `repo`, `read:org`, `workflow`
    - Copy the token (you won't see it again!)
 
 2. **Add Repository Secret**:
@@ -201,7 +201,8 @@ The project includes intentional security vulnerabilities in the UI components f
 
 **Common Issues:**
 - **Error**: `"COPILOT_TOKEN secret not found!"` → Add the repository secret
-- **Error**: `"Token may not have 'copilot' scope"` → Recreate PAT with proper scopes  
+- **Error**: `"missing required scope 'read:org'"` → Regenerate PAT with `read:org` scope
+- **Error**: `"Token may not have 'copilot' scope"` → Regenerate PAT with all required scopes
 - **Error**: `"GitHub Actions is not permitted to create or approve pull requests"` → Fix repository permissions (above)
 
 **Verification Commands:**

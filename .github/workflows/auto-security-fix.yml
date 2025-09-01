@@ -140,7 +140,10 @@ jobs:
             echo ""
             echo "🔧 SETUP REQUIRED:"
             echo "1. Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)"
-            echo "2. Generate new token with 'copilot' scope"
+            echo "2. Generate new token with these scopes:"
+            echo "   ✅ copilot (GitHub Copilot)"
+            echo "   ✅ repo (Full control of private repositories)"
+            echo "   ✅ read:org (Read org and team membership)"
             echo "3. Add token as repository secret named 'COPILOT_TOKEN'"
             echo "4. Re-run this workflow"
             echo ""
@@ -161,12 +164,27 @@ jobs:
           echo "🔐 Authenticating GitHub CLI with Copilot token..."
           # Temporarily clear GH_TOKEN to avoid conflict with --with-token
           unset GH_TOKEN
-          echo "$COPILOT_TOKEN" | gh auth login --with-token
-          
-          if gh auth status; then
-            echo "✅ GitHub CLI authenticated successfully"
+          if echo "$COPILOT_TOKEN" | gh auth login --with-token 2>/tmp/auth_error.txt; then
+            echo "✅ GitHub CLI authentication successful"
+            if gh auth status; then
+              echo "✅ GitHub CLI status confirmed"
+            else
+              echo "⚠️ GitHub CLI authenticated but status check failed"
+            fi
           else
-            echo "❌ GitHub CLI authentication failed"
+            echo "❌ GitHub CLI authentication failed!"
+            echo "🔍 Error details:"
+            cat /tmp/auth_error.txt 2>/dev/null || echo "No error details available"
+            echo ""
+            echo "🔧 Common Issues & Solutions:"
+            echo "• Missing 'read:org' scope → Regenerate token with read:org scope"
+            echo "• Missing 'copilot' scope → Regenerate token with copilot scope"  
+            echo "• Missing 'repo' scope → Regenerate token with repo scope"
+            echo "• Token expired → Generate new token"
+            echo "• Invalid token → Double-check token value in secret"
+            echo ""
+            echo "Required scopes: copilot, repo, read:org"
+            echo "🔗 Regenerate at: https://github.com/settings/tokens"
             exit 1
           fi
           
