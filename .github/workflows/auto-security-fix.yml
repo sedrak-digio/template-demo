@@ -26,6 +26,7 @@ permissions:
   issues: write
   security-events: read
   actions: read
+  models: read
 
 jobs:
   fetch-vulnerabilities:
@@ -127,86 +128,27 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Setup GitHub Copilot CLI
+      - name: Setup GitHub Models API for AI-Powered Security Fixes
         env:
-          COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "🤖 Setting up GitHub Copilot CLI with Personal Access Token authentication..."
+          echo "🤖 Setting up GitHub Models API for AI-powered security fixes..."
           
-          # Check if COPILOT_TOKEN is provided
-          if [ -z "$COPILOT_TOKEN" ]; then
-            echo "❌ COPILOT_TOKEN secret not found!"
-            echo ""
-            echo "🔧 SETUP REQUIRED:"
-            echo "1. Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)"
-            echo "2. Generate new token with these scopes:"
-            echo "   ✅ copilot (GitHub Copilot)"
-            echo "   ✅ repo (Full control of private repositories)"
-            echo "   ✅ read:org (Read org and team membership)"
-            echo "3. Add token as repository secret named 'COPILOT_TOKEN'"
-            echo "4. Re-run this workflow"
-            echo ""
-            echo "🔗 Direct link: https://github.com/settings/tokens"
-            exit 1
-          fi
-          
-          # Install GitHub Copilot CLI extension
-          echo "📦 Installing GitHub Copilot CLI extension..."
-          if gh extension install github/gh-copilot 2>/dev/null || gh extension list | grep -q "gh-copilot"; then
-            echo "✅ GitHub Copilot CLI extension ready"
+          # Test GitHub Models API access
+          echo "🧪 Testing GitHub Models API access..."
+          if gh api /user/models --jq '.[0].id' >/tmp/models_test.txt 2>/dev/null; then
+            MODEL_ID=$(cat /tmp/models_test.txt)
+            echo "✅ GitHub Models API is accessible"
+            echo "Sample available model: $MODEL_ID"
+            echo "MODELS_AVAILABLE=true" >> $GITHUB_ENV
           else
-            echo "❌ Failed to install GitHub Copilot CLI extension"
-            exit 1
-          fi
-          
-          # Authenticate GitHub CLI with the Copilot token
-          echo "🔐 Authenticating GitHub CLI with Copilot token..."
-          # Temporarily clear GH_TOKEN to avoid conflict with --with-token
-          unset GH_TOKEN
-          if echo "$COPILOT_TOKEN" | gh auth login --with-token 2>/tmp/auth_error.txt; then
-            echo "✅ GitHub CLI authentication successful"
-            if gh auth status; then
-              echo "✅ GitHub CLI status confirmed"
-            else
-              echo "⚠️ GitHub CLI authenticated but status check failed"
-            fi
-          else
-            echo "❌ GitHub CLI authentication failed!"
-            echo "🔍 Error details:"
-            cat /tmp/auth_error.txt 2>/dev/null || echo "No error details available"
+            echo "❌ GitHub Models API test failed"
+            echo "🔍 This might indicate:"
+            echo "• GitHub Models may not be enabled for your account"
+            echo "• GITHUB_TOKEN may not have models:read permission"
             echo ""
-            echo "🔧 Common Issues & Solutions:"
-            echo "• Missing 'read:org' scope → Regenerate token with read:org scope"
-            echo "• Missing 'copilot' scope → Regenerate token with copilot scope"  
-            echo "• Missing 'repo' scope → Regenerate token with repo scope"
-            echo "• Token expired → Generate new token"
-            echo "• Invalid token → Double-check token value in secret"
-            echo ""
-            echo "Required scopes: copilot, repo, read:org"
-            echo "🔗 Regenerate at: https://github.com/settings/tokens"
-            exit 1
-          fi
-          
-          # Restore GH_TOKEN for other GitHub CLI operations if needed
-          export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
-          
-          # Test Copilot functionality
-          echo "🧪 Testing GitHub Copilot CLI functionality..."
-          if timeout 60s gh copilot suggest "write a simple hello world function in JavaScript" >/tmp/copilot_test.txt 2>&1; then
-            echo "✅ GitHub Copilot CLI is working!"
-            echo "Sample output preview:"
-            head -5 /tmp/copilot_test.txt
-            echo "COPILOT_AVAILABLE=true" >> $GITHUB_ENV
-          else
-            echo "❌ GitHub Copilot CLI test failed"
-            echo "Error details:"
-            cat /tmp/copilot_test.txt 2>/dev/null || echo "No error details available"
-            echo ""
-            echo "🔍 Common issues:"
-            echo "- Token may not have 'copilot' scope"
-            echo "- GitHub Copilot may not be enabled for your account"
-            echo "- Token may be expired or invalid"
+            echo "ℹ️ GitHub Models is available to GitHub users with Copilot access"
+            echo "🔗 Learn more: https://github.com/features/models"
             exit 1
           fi
 
@@ -290,14 +232,14 @@ jobs:
                 echo "" >> /tmp/fix_prompt.txt
                 echo "Please provide a secure code fix that addresses this vulnerability while maintaining functionality." >> /tmp/fix_prompt.txt
                 
-                # COPILOT-ONLY APPROACH: Generate AI-powered security fixes
-                COPILOT_FIX_APPLIED=false
-                echo "🤖 Generating GitHub Copilot security fix (Copilot-only mode)..."
+                # GITHUB MODELS API APPROACH: Generate AI-powered security fixes
+                AI_FIX_APPLIED=false
+                echo "🤖 Generating AI-powered security fix using GitHub Models API..."
                 
-                # Verify Copilot is available (should be from setup step)
-                if [ "$COPILOT_AVAILABLE" != "true" ]; then
-                  echo "❌ GitHub Copilot not available - this workflow requires Copilot setup"
-                  echo "Please ensure COPILOT_TOKEN secret is configured correctly"
+                # Verify GitHub Models is available (should be from setup step)  
+                if [ "$MODELS_AVAILABLE" != "true" ]; then
+                  echo "❌ GitHub Models API not available"
+                  echo "Please ensure GitHub Models is enabled for your account"
                   exit 1
                 fi
                   
@@ -330,19 +272,31 @@ jobs:
                     echo "" >> /tmp/copilot_prompt.txt
                     echo "Respond with just the corrected code, no explanations." >> /tmp/copilot_prompt.txt
                     
-                    # Try to get Copilot fix suggestion with detailed error reporting
-                    echo "📝 Copilot prompt preview:"
+                    # Generate AI fix using GitHub Models API
+                    echo "📝 Security fix prompt preview:"
                     head -10 /tmp/copilot_prompt.txt
                     echo "..."
                     
-                    echo "🔄 Executing: gh copilot suggest..."
-                    if gh copilot suggest "$(cat /tmp/copilot_prompt.txt)" > /tmp/copilot_fix.txt 2>/tmp/copilot_error.txt; then
-                      echo "✅ GitHub Copilot provided code fix suggestion"
-                      echo "Copilot suggested fix:"
-                      cat /tmp/copilot_fix.txt
+                    # Use GitHub Models API for code generation
+                    echo "🔄 Executing: gh api models with security fix prompt..."
+                    
+                    # Create JSON payload for GitHub Models API
+                    PROMPT_CONTENT=$(cat /tmp/copilot_prompt.txt)
+                    
+                    # Call GitHub Models API (using gpt-4o model as default)
+                    if gh api user/models/gpt-4o/chat/completions \
+                      --method POST \
+                      --field model="gpt-4o" \
+                      --field max_tokens=1000 \
+                      --field temperature=0.1 \
+                      --raw-field messages="$(echo '[{"role":"user","content":"'"$PROMPT_CONTENT"'"}]' | sed 's/"/\\"/g')" \
+                      --jq '.choices[0].message.content' > /tmp/models_fix.txt 2>/tmp/models_error.txt; then
+                      echo "✅ GitHub Models API provided AI code fix suggestion"
+                      echo "AI-generated security fix:"
+                      cat /tmp/models_fix.txt
                       
-                      # Create a security note with the Copilot suggestion
-                      echo "// COPILOT-GENERATED SECURITY FIX" > "$FILE_PATH.security-note"
+                      # Create a security note with the AI-generated suggestion
+                      echo "// AI-GENERATED SECURITY FIX (GitHub Models API)" > "$FILE_PATH.security-note"
                       echo "// Rule: $RULE_ID" >> "$FILE_PATH.security-note"
                       echo "// Issue: $DESCRIPTION" >> "$FILE_PATH.security-note"
                       echo "// Location: Line $START_LINE" >> "$FILE_PATH.security-note"
@@ -350,28 +304,28 @@ jobs:
                       echo "// ORIGINAL VULNERABLE CODE (lines $CONTEXT_START-$CONTEXT_END):" >> "$FILE_PATH.security-note"
                       sed 's/^/\/\/ /' /tmp/code_context.txt >> "$FILE_PATH.security-note"
                       echo "//" >> "$FILE_PATH.security-note"
-                      echo "// COPILOT SUGGESTED FIX:" >> "$FILE_PATH.security-note"
-                      sed 's/^/\/\/ /' /tmp/copilot_fix.txt >> "$FILE_PATH.security-note"
+                      echo "// AI-GENERATED SECURITY FIX:" >> "$FILE_PATH.security-note"
+                      sed 's/^/\/\/ /' /tmp/models_fix.txt >> "$FILE_PATH.security-note"
                       echo "//" >> "$FILE_PATH.security-note"
                       echo "// INSTRUCTIONS:" >> "$FILE_PATH.security-note"
-                      echo "// 1. Review the suggested fix above" >> "$FILE_PATH.security-note"
+                      echo "// 1. Review the AI-generated fix above" >> "$FILE_PATH.security-note"
                       echo "// 2. Apply the fix to $FILE_PATH around line $START_LINE" >> "$FILE_PATH.security-note"
                       echo "// 3. Test thoroughly to ensure functionality is preserved" >> "$FILE_PATH.security-note"
                       echo "// 4. Remove this security note file after applying the fix" >> "$FILE_PATH.security-note"
                       echo "//" >> "$FILE_PATH.security-note"
-                      echo "// Generated: $(date -u)" >> "$FILE_PATH.security-note"
-                      COPILOT_FIX_APPLIED=true
-                      echo "✅ Created Copilot-powered security fix note: $FILE_PATH.security-note"
+                      echo "// Generated by GitHub Models API: $(date -u)" >> "$FILE_PATH.security-note"
+                      AI_FIX_APPLIED=true
+                      echo "✅ Created AI-powered security fix note: $FILE_PATH.security-note"
                       
                     else
-                      echo "❌ GitHub Copilot suggestion failed!"
+                      echo "❌ GitHub Models API security fix generation failed!"
                       echo "🔍 Error details:"
-                      cat /tmp/copilot_error.txt 2>/dev/null || echo "No error details available"
-                      echo "❌ This workflow requires GitHub Copilot - no fallback patterns"
+                      cat /tmp/models_error.txt 2>/dev/null || echo "No error details available"
+                      echo "❌ This workflow requires GitHub Models API access"
                       exit 1
                     fi
                   else
-                    echo "❌ Could not read file $FILE_PATH for Copilot analysis"
+                    echo "❌ Could not read file $FILE_PATH for AI analysis"
                     echo "📂 Current directory contents:"
                     ls -la
                     echo "📂 Looking for file: $FILE_PATH"

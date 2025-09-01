@@ -14,9 +14,9 @@ This document summarizes the comprehensive security automation system implemente
 
 ### 2. Automated Security Fix Workflow (.github/workflows/auto-security-fix.yml)
 - **Vulnerability Detection**: Fetches both dependency and code scanning alerts via GitHub API
-- **AI-Powered Fixes**: Integration with GitHub Copilot CLI for intelligent fix suggestions
+- **AI-Powered Fixes**: Integration with GitHub Models API for intelligent security fix generation
 - **Automated PR Creation**: Multiple fallback mechanisms for creating pull requests
-- **Security Notes**: Generates `.security-note` files with fix recommendations when AI fixes aren't available
+- **Security Notes**: Generates `.security-note` files with AI-generated fix recommendations
 
 ### 3. Dependency Management (.github/dependabot.yml)
 - **Multi-Directory Support**: Frontend (src), API, and GitHub Actions dependencies
@@ -27,7 +27,7 @@ This document summarizes the comprehensive security automation system implemente
 
 ### Security Vulnerability Detection Flow
 ```
-CodeQL Analysis → GitHub Security Alerts → Auto-Fix Workflow → AI Fixes/Notes → PR/Issue Creation
+CodeQL Analysis → GitHub Security Alerts → Auto-Fix Workflow → GitHub Models API → AI Fixes/Notes → PR/Issue Creation
 ```
 
 ### Fallback Mechanism (3-Tier)
@@ -180,29 +180,23 @@ The project includes intentional security vulnerabilities in the UI components f
 3. Ensure **"Allow GitHub Actions to create and approve pull requests"** is **UNCHECKED** (for security)
 4. Click **"Save"**
 
-#### 2. GitHub Copilot Authentication (REQUIRED)
-**This workflow uses GitHub Copilot CLI exclusively - no fallback patterns.**
+#### 2. GitHub Models API Access (REQUIRED)
+**This workflow uses GitHub Models API exclusively for AI-powered security fixes - no fallback patterns.**
 
-1. **Create Personal Access Token**:
-   - Go to https://github.com/settings/tokens
-   - Generate token with required scopes: `copilot`, `repo`, `read:org`, `workflow`
-   - Copy the token (you won't see it again!)
+1. **GitHub Models Requirements**:
+   - GitHub account with Copilot subscription (Individual/Business/Enterprise)
+   - Repository must have `models: read` permission (automatically configured)
+   - Uses built-in `GITHUB_TOKEN` for authentication
 
-2. **Add Repository Secret**:
-   - Go to Repository Settings → Secrets and variables → Actions
-   - Add new secret: Name = `COPILOT_TOKEN`, Value = your PAT
-   - Click "Add secret"
-
-3. **Verify Setup**:
+2. **Verify Access**:
    - Trigger workflow and check for success message:
-   - `✅ GitHub Copilot CLI is working!`
+   - `✅ GitHub Models API is accessible`
 
-**📋 Detailed Setup Guide**: See [COPILOT-SETUP.md](./COPILOT-SETUP.md)
+**📋 GitHub Models Info**: Visit https://github.com/features/models
 
 **Common Issues:**
-- **Error**: `"COPILOT_TOKEN secret not found!"` → Add the repository secret
-- **Error**: `"missing required scope 'read:org'"` → Regenerate PAT with `read:org` scope
-- **Error**: `"Token may not have 'copilot' scope"` → Regenerate PAT with all required scopes
+- **Error**: `"GitHub Models API test failed"` → Ensure GitHub Copilot subscription is active
+- **Error**: `"GITHUB_TOKEN may not have models:read permission"` → Check workflow permissions
 - **Error**: `"GitHub Actions is not permitted to create or approve pull requests"` → Fix repository permissions (above)
 
 **Verification Commands:**
