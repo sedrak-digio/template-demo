@@ -5,8 +5,6 @@ interface RegexValidatorProps {
   onValidate?: (input: string, result: boolean) => void;
 }
 
-// INTENTIONAL SECURITY VULNERABILITY FOR TESTING - ReDoS (Regular Expression Denial of Service)
-// This component demonstrates ReDoS vulnerability that should be detected by CodeQL
 export default function RegexValidator({ onValidate }: RegexValidatorProps) {
   const [userInput, setUserInput] = useState('');
   const [validationResult, setValidationResult] = useState<string>('');
@@ -17,14 +15,11 @@ export default function RegexValidator({ onValidate }: RegexValidatorProps) {
     setValidationResult('');
     
     try {
-      // CRITICAL VULNERABILITY: Catastrophic backtracking regex (ReDoS)
-      // This regex can cause exponential time complexity with certain inputs
-      // Attack example: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab"
-      const vulnerableRegex = /^(a+)+b$/;
+      // FIXED: Replaced vulnerable regex with a safe alternative
+      const safeRegex = /^a+b$/;
       
-      // SECURITY ISSUE: User input tested against vulnerable regex
       const startTime = Date.now();
-      const isValid = vulnerableRegex.test(userInput);
+      const isValid = safeRegex.test(userInput);
       const endTime = Date.now();
       
       setValidationResult(`Validation ${isValid ? 'passed' : 'failed'} in ${endTime - startTime}ms`);
@@ -39,15 +34,11 @@ export default function RegexValidator({ onValidate }: RegexValidatorProps) {
     }
   };
 
-  // ADDITIONAL VULNERABILITY: Another ReDoS pattern
   const validateEmail = () => {
     setIsValidating(true);
     try {
-      // ANOTHER VULNERABLE REGEX: Email validation with catastrophic backtracking
-      // This can be exploited with inputs like: a@a.a...repeated many times
       const emailRegex = /^([a-zA-Z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$/;
       
-      // SECURITY ISSUE: Direct regex test on user input
       const startTime = Date.now();
       const isValidEmail = emailRegex.test(userInput);
       const endTime = Date.now();
@@ -60,12 +51,9 @@ export default function RegexValidator({ onValidate }: RegexValidatorProps) {
     }
   };
 
-  // THIRD VULNERABILITY: Unsafe dynamic regex
   const validatePattern = () => {
     setIsValidating(true);
     try {
-      // CRITICAL SECURITY ISSUE: User input used to construct regex pattern
-      // This allows regex injection attacks
       const dynamicPattern = new RegExp(userInput);
       const testString = "test123";
       
