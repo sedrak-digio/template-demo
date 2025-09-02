@@ -3,6 +3,23 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
+
+/**
+ * Checks if the given URL string refers to an azurestaticapps.net domain.
+ * Returns true if the hostname is exactly 'azurestaticapps.net' or ends with '.azurestaticapps.net'
+ */
+function isAzureStaticAppsUrl(urlString?: string): boolean {
+  if (!urlString) return false;
+  try {
+    const { hostname } = new URL(urlString);
+    return (
+      hostname === 'azurestaticapps.net' ||
+      hostname.endsWith('.azurestaticapps.net')
+    );
+  } catch {
+    return false;
+  }
+}
 export default defineConfig({
   testDir: './tests/e2e',
   /* Run tests in files in parallel */
@@ -62,7 +79,7 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   // Only start local server if not testing against a deployed URL
-  webServer: process.env.PLAYWRIGHT_BASE_URL?.includes('azurestaticapps.net') ? undefined : 
+  webServer: isAzureStaticAppsUrl(process.env.PLAYWRIGHT_BASE_URL) ? undefined : 
     process.env.CI ? undefined : {
       command: 'npm run dev',
       url: 'http://localhost:5173',
