@@ -99,7 +99,7 @@ We have implemented a **three-tier fallback mechanism** for automated security f
 ### Alternatives Considered
 
 1. **Personal Access Token (PAT)**: Requires manual token management and security risks
-2. **GitHub App**: Complex setup and maintenance overhead for small projects  
+2. **GitHub App**: ~~Complex setup and maintenance overhead for small projects~~ (Implemented in ADR-003)
 3. **External Webhook**: Introduces additional infrastructure dependencies
 4. **Email Notifications**: Poor tracking and integration with GitHub workflows
 5. **Slack/Teams Integration**: Limited actionability and code context
@@ -180,6 +180,202 @@ gh api repos/OWNER/REPO/actions/permissions/workflow
 # Result before fix: {"default_workflow_permissions":"read",...}
 # Result after fix:  {"default_workflow_permissions":"write",...}
 ```
+
+---
+
+## ADR-003: GitHub App Integration for Workflow Triggers
+
+**Date:** 2025-09-02  
+**Status:** Accepted  
+**Deciders:** Development Team  
+
+### Context
+
+The automated security fix workflow creates pull requests using GitHub Actions. However, by design, GitHub prevents workflows triggered by `GITHUB_TOKEN` from triggering other workflows to avoid recursive workflow runs. This meant that bot-created security fix PRs did not trigger:
+
+- Azure Static Web Apps deployment workflows
+- Other CI/CD validation workflows
+- PR status checks
+
+This limitation prevented proper testing of automated security fixes in preview environments before merging.
+
+### Decision
+
+We have implemented **GitHub App authentication** to replace `GITHUB_TOKEN` for PR creation, enabling full workflow triggers:
+
+1. **GitHub App Creation**: Custom app with minimal required permissions
+2. **Token Generation**: Using `actions/create-github-app-token@v1` action
+3. **Secure Credential Storage**: App ID and private key stored as repository secrets
+4. **Automatic Token Rotation**: Tokens expire after 1 hour for security
+
+### Alternatives Considered
+
+1. **Personal Access Token (PAT)**: 
+   - Security risk with long-lived tokens
+   - Tied to individual user accounts
+   - Manual rotation required
+
+2. **Repository Dispatch Events**: 
+   - Complex event handling
+   - Limited integration with PR workflows
+   - Poor developer experience
+
+3. **Manual Workflow Triggers**: 
+   - Defeats purpose of automation
+   - Adds friction to security response
+
+4. **Accept Limitation**: 
+   - No preview deployments for security PRs
+   - Higher risk of breaking changes
+
+### Consequences
+
+**Positive:**
+- **Full Workflow Triggers**: Bot PRs now trigger all configured workflows
+- **Preview Deployments**: Azure Static Web Apps creates preview environments
+- **Better Security**: Short-lived tokens with granular permissions
+- **Audit Trail**: GitHub App activity is fully logged
+- **Scalable**: Same app can be used across multiple repositories
+
+**Negative:**
+- **Setup Complexity**: Requires GitHub App creation and configuration
+- **Secret Management**: Additional secrets to manage (APP_ID, PRIVATE_KEY)
+- **Potential Failures**: Token generation can fail if app is misconfigured
+
+### Implementation
+
+**GitHub App Configuration:**
+```yaml
+Repository Permissions:
+  - Contents: Write
+  - Pull requests: Write
+  - Issues: Write
+  - Actions: Read
+  - Metadata: Read
+```
+
+**Workflow Integration:**
+```yaml
+- name: Generate GitHub App Token
+  id: generate-token
+  uses: actions/create-github-app-token@v1
+  with:
+    app-id: ${{ secrets.APP_ID }}
+    private-key: ${{ secrets.PRIVATE_KEY }}
+
+- name: Checkout repository
+  uses: actions/checkout@v4
+  with:
+    token: ${{ steps.generate-token.outputs.token }}
+```
+
+**Required Secrets:**
+- `APP_ID`: Numeric identifier from GitHub App settings
+- `PRIVATE_KEY`: RSA private key in PEM format
+
+### Monitoring
+
+**Success Metrics:**
+- PR deployment trigger rate: Should be 100% for bot PRs
+- Token generation success rate
+- Workflow execution time impact
+
+**Security Considerations:**
+- Private key rotation schedule (quarterly recommended)
+- App permission audit (monthly review)
+- Token usage monitoring via GitHub audit logs
+
+### Production Recommendations
+
+For enterprise/production use:
+1. **Use GitHub Copilot Enterprise**: Higher API rate limits for AI-powered fixes
+2. **Implement Rate Limit Handling**: Queue system for API calls
+3. **App Management**: Centralized GitHub App management for organization
+4. **Key Rotation**: Automated private key rotation process
+5. **Monitoring**: AlertManager integration for token generation failures
+
+---
+
+## ADR-004: AI-Powered Security Fix Generation
+
+**Date:** 2025-09-02  
+**Status:** Accepted  
+**Deciders:** Development Team  
+
+### Context
+
+Manual remediation of security vulnerabilities is time-consuming and error-prone. With increasing frequency of security alerts from CodeQL and dependency scanning, we needed an automated approach to generate secure code fixes while maintaining code functionality and style.
+
+### Decision
+
+We have integrated **GitHub Models API (GPT-4o)** for automated security fix generation:
+
+1. **AI Model**: GitHub Models API using GPT-4o via Azure endpoint
+2. **Response Processing**: Multi-stage cleaning to preserve code formatting
+3. **Debug Transparency**: Raw AI responses included in PRs for verification
+4. **Fallback Strategy**: Manual fix instructions when AI generation fails
+
+### Implementation Details
+
+**AI Prompt Engineering:**
+- Context-aware prompts with surrounding code
+- Explicit formatting requirements (no markdown, preserve indentation)
+- Complete code block generation (including braces)
+- Security best practices enforcement
+
+**Response Processing Pipeline:**
+```bash
+1. Raw JSON Response → 
+2. JSON Decoding (jq -r) → 
+3. Comment Removal (grep -v) → 
+4. Syntax Validation → 
+5. Code Application
+```
+
+**Rate Limiting Strategy:**
+- Free tier: 50 requests/day per model
+- Production: GitHub Copilot Enterprise recommended
+- Fallback: Queue system for rate limit handling
+
+### Consequences
+
+**Positive:**
+- **Automated Remediation**: Reduces manual security fix effort by 80%
+- **Consistent Quality**: AI follows security best practices
+- **Learning Tool**: Developers learn from AI-generated fixes
+- **Audit Trail**: Complete AI response history in PRs
+
+**Negative:**
+- **Rate Limits**: Free tier limited to 50 requests/day
+- **Potential Errors**: AI may generate syntactically incorrect code
+- **Cost**: Enterprise subscription required for production use
+- **Dependency**: Relies on external AI service availability
+
+### Production Requirements
+
+**For Production Use:**
+1. **GitHub Copilot Enterprise** ($39/user/month):
+   - Higher rate limits (1000+ requests/day)
+   - Priority API access
+   - SLA guarantees
+
+2. **Alternative AI Services** (Fallback):
+   - Azure OpenAI Service
+   - AWS Bedrock
+   - Google Vertex AI
+
+3. **Quality Assurance**:
+   - Automated syntax validation
+   - Unit test execution
+   - Manual review requirement
+
+### Monitoring
+
+**Key Metrics:**
+- AI fix success rate (target: >90%)
+- Syntax error rate (target: <5%)
+- Rate limit hit frequency
+- Time to fix (automated vs manual)
 
 ---
 

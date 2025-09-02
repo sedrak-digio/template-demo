@@ -1,8 +1,11 @@
 # Security Automation Implementation Summary
 
+> **Note**: This document provides the initial implementation details and testing approach. 
+> For production deployment and current documentation, see [SECURITY-AUTOMATION.md](./SECURITY-AUTOMATION.md)
+
 ## 🎯 Overview
 
-This document summarizes the comprehensive security automation system implemented for the template-demo project, including vulnerability detection, automated fixing workflows, and fallback mechanisms for various repository restrictions.
+This document summarizes the initial implementation of the comprehensive security automation system for the template-demo project, including vulnerability detection, automated fixing workflows, and fallback mechanisms for various repository restrictions.
 
 ## 📋 Features Implemented
 
