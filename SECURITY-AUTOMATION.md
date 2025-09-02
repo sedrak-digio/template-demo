@@ -123,19 +123,22 @@ graph LR
     H --> I[Manual Review]
 ```
 
-### AI Fix Generation Pipeline
+### AI Fix Generation Pipeline (v2.0 - Full File Context)
 ```bash
-1. Extract vulnerable code context (±5 lines)
-2. Generate security-aware prompt
+1. Read ENTIRE source file for complete context
+2. Generate comprehensive prompt with full file
 3. Call GitHub Models API (GPT-4o)
 4. Process response:
    - Decode JSON escapes (jq -r)
    - Remove security comments
-   - Preserve formatting
-5. Validate syntax (tsc/node -c)
-6. Apply fix to file
+   - Preserve complete file structure
+5. Replace entire file with AI response
+6. Validate syntax (tsc/node -c)
 7. Include debug info in PR
 ```
+
+**Key Improvement**: AI now receives and returns complete files instead of line ranges,
+preventing syntax errors and structural breaks.
 
 ### PR Creation Strategy
 ```yaml
@@ -201,8 +204,16 @@ Solution: Verify app is installed on repository
 
 #### 4. **AI Generated Invalid Code**
 ```
-Error: TypeScript syntax error
-Solution: Check PR debug info for raw response
+Error: TypeScript syntax error, missing braces, broken functions
+Solution: Workflow now uses full file context (v2.0)
+Previous issues fixed by sending complete files to AI
+```
+
+#### 5. **Recursive Workflow Loops**
+```
+Error: Security fix PRs trigger more security fixes
+Solution: Workflow skips security-fix/* branches
+Prevents infinite PR creation loops
 ```
 
 ### Debug Commands
