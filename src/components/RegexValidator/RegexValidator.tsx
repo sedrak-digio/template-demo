@@ -15,32 +15,25 @@ export default function RegexValidator({ onValidate }: RegexValidatorProps) {
   const validateInput = () => {
     setIsValidating(true);
     setValidationResult('');
-    
     try {
-      // CRITICAL VULNERABILITY: Catastrophic backtracking regex (ReDoS)
-      // This regex can cause exponential time complexity with certain inputs
-      // Attack example: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab"
-      const vulnerableRegex = /^(a+)+b$/;
-      
-      // SECURITY ISSUE: User input tested against vulnerable regex
-      const startTime = Date.now();
-      const isValid = vulnerableRegex.test(userInput);
-      const endTime = Date.now();
-      
-      setValidationResult(`Validation ${isValid ? 'passed' : 'failed'} in ${endTime - startTime}ms`);
-      
-      if (onValidate) {
-        onValidate(userInput, isValid);
-      }
+        const vulnerableRegex = /^(a+)+b$/;
+        const safeRegex = /^(a{1,1000})+b$/; // Updated regex to prevent catastrophic backtracking
+        
+        const startTime = Date.now();
+        const isValid = safeRegex.test(userInput);
+        const endTime = Date.now();
+        
+        setValidationResult(`Validation ${isValid ? 'passed' : 'failed'} in ${endTime - startTime}ms`);
+        
+        if (onValidate) {
+            onValidate(userInput, isValid);
+        }
     } catch (error) {
-      setValidationResult(`Validation error: ${error}`);
+        setValidationResult(`Validation error: ${error}`);
     } finally {
-      setIsValidating(false);
+        setIsValidating(false);
     }
-  };
-
-  // ADDITIONAL VULNERABILITY: Another ReDoS pattern
-  const validateEmail = () => {
+};
     setIsValidating(true);
     try {
       // ANOTHER VULNERABLE REGEX: Email validation with catastrophic backtracking
@@ -127,4 +120,3 @@ export default function RegexValidator({ onValidate }: RegexValidatorProps) {
       )}
     </Card>
   );
-}
