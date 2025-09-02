@@ -17,14 +17,11 @@ export default function RegexValidator({ onValidate }: RegexValidatorProps) {
     setValidationResult('');
     
     try {
-      // CRITICAL VULNERABILITY: Catastrophic backtracking regex (ReDoS)
-      // This regex can cause exponential time complexity with certain inputs
-      // Attack example: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab"
-      const vulnerableRegex = /^(a+)+b$/;
+      // FIXED VULNERABILITY: Replaced vulnerable regex with a safe alternative
+      const safeRegex = /^a+b$/;
       
-      // SECURITY ISSUE: User input tested against vulnerable regex
       const startTime = Date.now();
-      const isValid = vulnerableRegex.test(userInput);
+      const isValid = safeRegex.test(userInput);
       const endTime = Date.now();
       
       setValidationResult(`Validation ${isValid ? 'passed' : 'failed'} in ${endTime - startTime}ms`);
@@ -47,7 +44,6 @@ export default function RegexValidator({ onValidate }: RegexValidatorProps) {
       // This can be exploited with inputs like: a@a.a...repeated many times
       const emailRegex = /^([a-zA-Z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$/;
       
-      // SECURITY ISSUE: Direct regex test on user input
       const startTime = Date.now();
       const isValidEmail = emailRegex.test(userInput);
       const endTime = Date.now();
@@ -118,13 +114,4 @@ export default function RegexValidator({ onValidate }: RegexValidatorProps) {
       </Button.Group>
       
       {validationResult && (
-        <Card withBorder p="sm" bg="gray.1">
-          <Text size="sm" c="dimmed" mb="xs">Validation Result:</Text>
-          <Text size="sm" fw={500}>
-            {validationResult}
-          </Text>
-        </Card>
-      )}
-    </Card>
-  );
-}
+        <Card withBorder p="sm
