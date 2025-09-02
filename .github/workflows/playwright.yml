@@ -15,7 +15,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [chromium, 'Mobile Safari']
+        include:
+          - project: chromium
+            browser: chromium
+          - project: firefox
+            browser: firefox
+          - project: webkit
+            browser: webkit
+          - project: 'Mobile Chrome'
+            browser: chromium
+          - project: 'Mobile Safari'
+            browser: webkit
     
     steps:
     - name: Checkout repository
@@ -31,7 +41,7 @@ jobs:
       run: npm ci
     
     - name: Install Playwright Browsers
-      run: npx playwright install --with-deps ${{ matrix.project }}
+      run: npx playwright install --with-deps ${{ matrix.browser }}
     
     - name: Build application
       run: npm run build
@@ -44,7 +54,7 @@ jobs:
         VITE_PORT: 4173
     
     - name: Run Playwright tests
-      run: npx playwright test --project=${{ matrix.project }}
+      run: npx playwright test --project="${{ matrix.project }}"
       env:
         PLAYWRIGHT_BASE_URL: http://localhost:4173
     
@@ -52,7 +62,7 @@ jobs:
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: playwright-results-${{ matrix.project }}
+        name: playwright-results-${{ strategy.job-index }}
         path: |
           test-results/
           playwright-report/
