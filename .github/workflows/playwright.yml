@@ -1,14 +1,21 @@
 name: Playwright Tests
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_run:
+    workflows: ["Azure Static Web Apps CI/CD"]
+    types:
+      - completed
   workflow_dispatch:
+    inputs:
+      deployment_url:
+        description: 'URL to test against (optional)'
+        required: false
+        type: string
 
 jobs:
   test:
+    # Only run if the deployment was successful or this is a manual run
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     timeout-minutes: 60
     runs-on: ubuntu-latest
     
@@ -43,20 +50,43 @@ jobs:
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps ${{ matrix.browser }}
     
-    - name: Build application
-      run: npm run build
-      
-    - name: Start preview server
+    - name: Determine test URL
+      id: test_url
       run: |
-        npm run preview &
-        sleep 5
-      env:
-        VITE_PORT: 4173
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] && [[ -n "${{ github.event.inputs.deployment_url }}" ]]; then
+          # Manual run with custom URL
+          echo "TEST_URL=${{ github.event.inputs.deployment_url }}" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.event.workflow_run.event }}" == "pull_request" ]]; then
+          # PR deployment - need to get PR number from workflow run
+          PR_NUMBER=$(echo '${{ toJSON(github.event.workflow_run.pull_requests[0]) }}' | jq -r '.number // empty')
+          if [[ -n "${PR_NUMBER}" ]]; then
+            echo "TEST_URL=https://proud-ground-0a659080f-${PR_NUMBER}.eastus2.4.azurestaticapps.net" >> $GITHUB_OUTPUT
+          else
+            echo "TEST_URL=https://proud-ground-0a659080f.4.azurestaticapps.net" >> $GITHUB_OUTPUT
+          fi
+        else
+          # Main branch deployment
+          echo "TEST_URL=https://proud-ground-0a659080f.4.azurestaticapps.net" >> $GITHUB_OUTPUT
+        fi
+        echo "Testing against: $(cat $GITHUB_OUTPUT | grep TEST_URL | cut -d'=' -f2)"
+    
+    - name: Wait for deployment to be ready
+      run: |
+        URL="${{ steps.test_url.outputs.TEST_URL }}"
+        echo "Waiting for deployment at ${URL}"
+        for i in {1..30}; do
+          if curl -s -o /dev/null -w "%{http_code}" "${URL}" | grep -q "200\|304"; then
+            echo "Deployment is ready!"
+            break
+          fi
+          echo "Waiting for deployment... (attempt $i/30)"
+          sleep 10
+        done
     
     - name: Run Playwright tests
       run: npx playwright test --project="${{ matrix.project }}"
       env:
-        PLAYWRIGHT_BASE_URL: http://localhost:4173
+        PLAYWRIGHT_BASE_URL: ${{ steps.test_url.outputs.TEST_URL }}
     
     - name: Upload test results
       uses: actions/upload-artifact@v4

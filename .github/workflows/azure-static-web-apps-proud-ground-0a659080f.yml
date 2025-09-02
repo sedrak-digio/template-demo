@@ -14,6 +14,8 @@ jobs:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
     name: Build and Deploy Job
+    outputs:
+      deployment_url: ${{ steps.get_url.outputs.deployment_url }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -32,6 +34,20 @@ jobs:
           api_location: "api" # Api source code path - optional
           output_location: "dist" # Built app content directory - optional
           ###### End of Repository/Build Configurations ######
+      
+      - name: Get deployment URL
+        id: get_url
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # For PRs, construct the preview URL
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+            DEPLOYMENT_URL="https://proud-ground-0a659080f-${PR_NUMBER}.eastus2.4.azurestaticapps.net"
+          else
+            # For main branch, use production URL
+            DEPLOYMENT_URL="https://proud-ground-0a659080f.4.azurestaticapps.net"
+          fi
+          echo "deployment_url=${DEPLOYMENT_URL}" >> $GITHUB_OUTPUT
+          echo "Deployed to: ${DEPLOYMENT_URL}"
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
