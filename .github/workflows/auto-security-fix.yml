@@ -305,29 +305,16 @@ jobs:
                   exit 1
                 fi
                   
-                  # Read the vulnerable code context
+                  # Read the entire file for complete context
                   if [ -f "$FILE_PATH" ]; then
-                    # Intelligently determine context based on code structure
-                    # Look for try blocks which need complete context including catch
-                    CONTEXT_START=$((START_LINE - 5))
+                    echo "Reading complete file $FILE_PATH for AI analysis"
                     
-                    # Check if we're in a try block - if so, include the catch block
-                    if grep -q "^\s*try\s*{" "$FILE_PATH" | head -n $START_LINE | tail -n 10; then
-                      echo "Detected try block - extending context to include catch/finally"
-                      # Find the matching closing brace and catch block
-                      CONTEXT_END=$((START_LINE + 20))  # Extended context for try-catch blocks
-                    else
-                      CONTEXT_END=$((START_LINE + 10))  # Standard extended context
-                    fi
+                    # Store the entire file content
+                    cat "$FILE_PATH" > /tmp/code_context.txt
                     
-                    if [ $CONTEXT_START -lt 1 ]; then CONTEXT_START=1; fi
-                    
-                    # Ensure we don't exceed file length
+                    # Get file stats for reference
                     TOTAL_LINES=$(wc -l < "$FILE_PATH")
-                    if [ $CONTEXT_END -gt $TOTAL_LINES ]; then CONTEXT_END=$TOTAL_LINES; fi
-                    
-                    echo "Reading code context from $FILE_PATH lines $CONTEXT_START-$CONTEXT_END"
-                    sed -n "${CONTEXT_START},${CONTEXT_END}p" "$FILE_PATH" > /tmp/code_context.txt
+                    echo "File has $TOTAL_LINES lines total"
                     
                     # Create enhanced prompt for automatic code fixing
                     echo "SECURITY VULNERABILITY AUTO-FIX REQUEST" > /tmp/copilot_prompt.txt
@@ -337,26 +324,22 @@ jobs:
                     echo "Security Rule: $RULE_ID" >> /tmp/copilot_prompt.txt
                     echo "Issue: $DESCRIPTION" >> /tmp/copilot_prompt.txt
                     echo "" >> /tmp/copilot_prompt.txt
-                    echo "ORIGINAL CODE CONTEXT (lines $CONTEXT_START-$CONTEXT_END):" >> /tmp/copilot_prompt.txt
+                    echo "COMPLETE FILE CONTENT:" >> /tmp/copilot_prompt.txt
                     cat /tmp/code_context.txt >> /tmp/copilot_prompt.txt
                     echo "" >> /tmp/copilot_prompt.txt
                     echo "INSTRUCTIONS:" >> /tmp/copilot_prompt.txt
                     echo "1. Fix the security vulnerability on line $START_LINE" >> /tmp/copilot_prompt.txt
-                    echo "2. Maintain the same functionality and code structure" >> /tmp/copilot_prompt.txt
-                    echo "3. Follow security best practices" >> /tmp/copilot_prompt.txt
-                    echo "4. Preserve all imports, comments, and formatting" >> /tmp/copilot_prompt.txt
+                    echo "2. Return the ENTIRE file with ONLY the vulnerability fixed" >> /tmp/copilot_prompt.txt
+                    echo "3. Preserve ALL other code exactly as-is" >> /tmp/copilot_prompt.txt
+                    echo "4. Maintain all functions, imports, exports, and structure" >> /tmp/copilot_prompt.txt
                     echo "" >> /tmp/copilot_prompt.txt
-                    echo "CRITICAL RESPONSE FORMAT REQUIREMENTS:" >> /tmp/copilot_prompt.txt
-                    echo "1. Return the COMPLETE code block to replace lines $CONTEXT_START-$CONTEXT_END" >> /tmp/copilot_prompt.txt
-                    echo "2. Include EVERY SINGLE LINE from the provided context (all $((CONTEXT_END - CONTEXT_START + 1)) lines)" >> /tmp/copilot_prompt.txt
-                    echo "3. Include ALL braces, brackets, parentheses - both opening AND closing" >> /tmp/copilot_prompt.txt  
-                    echo "4. If there's a try block, include the COMPLETE catch block" >> /tmp/copilot_prompt.txt
-                    echo "5. NO markdown code blocks (no \`\`\`typescript or \`\`\`)" >> /tmp/copilot_prompt.txt
-                    echo "6. NO explanations, comments about the vulnerability, or security notes" >> /tmp/copilot_prompt.txt
-                    echo "7. NO line numbers or prefixes" >> /tmp/copilot_prompt.txt
-                    echo "8. Start directly with the code content" >> /tmp/copilot_prompt.txt
-                    echo "9. PRESERVE EXACT INDENTATION - if original has 4 spaces, use 4 spaces" >> /tmp/copilot_prompt.txt
-                    echo "10. Response must be syntactically complete - test that all braces match!" >> /tmp/copilot_prompt.txt
+                    echo "CRITICAL RESPONSE FORMAT:" >> /tmp/copilot_prompt.txt
+                    echo "1. Return the COMPLETE file from first line to last line" >> /tmp/copilot_prompt.txt
+                    echo "2. Include ALL $TOTAL_LINES lines (or close to it)" >> /tmp/copilot_prompt.txt
+                    echo "3. NO markdown formatting (no \`\`\`typescript or \`\`\`)" >> /tmp/copilot_prompt.txt  
+                    echo "4. NO explanations or comments about the fix" >> /tmp/copilot_prompt.txt
+                    echo "5. Start with the first import and end with the last export/brace" >> /tmp/copilot_prompt.txt
+                    echo "6. The response should be valid TypeScript/JavaScript that compiles" >> /tmp/copilot_prompt.txt
                     
                     # Generate AI fix using GitHub Models API
                     echo "📝 Security fix prompt preview:"
@@ -418,25 +401,9 @@ jobs:
                       # Create backup of original file
                       cp "$FILE_PATH" "$FILE_PATH.backup"
                       
-                      # Create the fixed file by replacing the vulnerable section
-                      # Get content before vulnerable section
-                      if [ $CONTEXT_START -gt 1 ]; then
-                        sed -n "1,$((CONTEXT_START-1))p" "$FILE_PATH" > "$FILE_PATH.fixed"
-                      else
-                        > "$FILE_PATH.fixed"  # Create empty file if starting from line 1
-                      fi
-                      
-                      # Add the cleaned AI-generated fixed code
-                      cat /tmp/models_fix_clean.txt >> "$FILE_PATH.fixed"
-                      
-                      # Add content after vulnerable section
-                      TOTAL_LINES=$(wc -l < "$FILE_PATH")
-                      if [ $CONTEXT_END -lt $TOTAL_LINES ]; then
-                        sed -n "$((CONTEXT_END+1)),${TOTAL_LINES}p" "$FILE_PATH" >> "$FILE_PATH.fixed"
-                      fi
-                      
-                      # Replace original file with fixed version
-                      mv "$FILE_PATH.fixed" "$FILE_PATH"
+                      # Since AI returns the complete fixed file, simply replace the entire file
+                      echo "🔧 Replacing entire file with AI-fixed version..."
+                      cp /tmp/models_fix_clean.txt "$FILE_PATH"
                       
                       # Validate the fixed code with basic syntax checking
                       echo "🔍 Validating AI-generated code..."
@@ -470,14 +437,14 @@ jobs:
                       echo "SECURITY FIX DETAILS:" >> /tmp/fix_details.txt
                       echo "Rule: $RULE_ID" >> /tmp/fix_details.txt  
                       echo "Issue: $DESCRIPTION" >> /tmp/fix_details.txt
-                      echo "File: $FILE_PATH (Lines $CONTEXT_START-$CONTEXT_END)" >> /tmp/fix_details.txt
+                      echo "File: $FILE_PATH (Vulnerability at line $START_LINE)" >> /tmp/fix_details.txt
                       echo "Fix: AI automatically replaced vulnerable code with secure implementation" >> /tmp/fix_details.txt
                       echo "Generated by: GitHub Models GPT-4o" >> /tmp/fix_details.txt
                       echo "" >> /tmp/fix_details.txt
                       
                       # Save raw AI response for PR debugging
                       echo "## Raw AI Response for $FILE_PATH" >> /tmp/ai_responses.md
-                      echo "### Lines $CONTEXT_START-$CONTEXT_END" >> /tmp/ai_responses.md
+                      echo "### Complete File Replacement (Line $START_LINE vulnerability)" >> /tmp/ai_responses.md
                       echo '```json' >> /tmp/ai_responses.md
                       cat /tmp/models_fix.txt >> /tmp/ai_responses.md
                       echo '```' >> /tmp/ai_responses.md
