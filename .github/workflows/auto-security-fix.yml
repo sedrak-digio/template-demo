@@ -307,10 +307,24 @@ jobs:
                   
                   # Read the vulnerable code context
                   if [ -f "$FILE_PATH" ]; then
-                    # Get 5 lines before and after the vulnerable line for context
+                    # Intelligently determine context based on code structure
+                    # Look for try blocks which need complete context including catch
                     CONTEXT_START=$((START_LINE - 5))
-                    CONTEXT_END=$((START_LINE + 5))
+                    
+                    # Check if we're in a try block - if so, include the catch block
+                    if grep -q "^\s*try\s*{" "$FILE_PATH" | head -n $START_LINE | tail -n 10; then
+                      echo "Detected try block - extending context to include catch/finally"
+                      # Find the matching closing brace and catch block
+                      CONTEXT_END=$((START_LINE + 20))  # Extended context for try-catch blocks
+                    else
+                      CONTEXT_END=$((START_LINE + 10))  # Standard extended context
+                    fi
+                    
                     if [ $CONTEXT_START -lt 1 ]; then CONTEXT_START=1; fi
+                    
+                    # Ensure we don't exceed file length
+                    TOTAL_LINES=$(wc -l < "$FILE_PATH")
+                    if [ $CONTEXT_END -gt $TOTAL_LINES ]; then CONTEXT_END=$TOTAL_LINES; fi
                     
                     echo "Reading code context from $FILE_PATH lines $CONTEXT_START-$CONTEXT_END"
                     sed -n "${CONTEXT_START},${CONTEXT_END}p" "$FILE_PATH" > /tmp/code_context.txt
@@ -334,13 +348,15 @@ jobs:
                     echo "" >> /tmp/copilot_prompt.txt
                     echo "CRITICAL RESPONSE FORMAT REQUIREMENTS:" >> /tmp/copilot_prompt.txt
                     echo "1. Return the COMPLETE code block to replace lines $CONTEXT_START-$CONTEXT_END" >> /tmp/copilot_prompt.txt
-                    echo "2. Include ALL lines (opening braces, closing braces, etc.)" >> /tmp/copilot_prompt.txt  
-                    echo "3. NO markdown code blocks (no \`\`\`typescript or \`\`\`)" >> /tmp/copilot_prompt.txt
-                    echo "4. NO explanations, comments about the vulnerability, or security notes" >> /tmp/copilot_prompt.txt
-                    echo "5. NO line numbers or prefixes" >> /tmp/copilot_prompt.txt
-                    echo "6. Start directly with the code content" >> /tmp/copilot_prompt.txt
-                    echo "7. PRESERVE EXACT INDENTATION - if original has 4 spaces, use 4 spaces" >> /tmp/copilot_prompt.txt
-                    echo "8. Response must be syntactically complete and ready for direct file replacement" >> /tmp/copilot_prompt.txt
+                    echo "2. Include EVERY SINGLE LINE from the provided context (all $((CONTEXT_END - CONTEXT_START + 1)) lines)" >> /tmp/copilot_prompt.txt
+                    echo "3. Include ALL braces, brackets, parentheses - both opening AND closing" >> /tmp/copilot_prompt.txt  
+                    echo "4. If there's a try block, include the COMPLETE catch block" >> /tmp/copilot_prompt.txt
+                    echo "5. NO markdown code blocks (no \`\`\`typescript or \`\`\`)" >> /tmp/copilot_prompt.txt
+                    echo "6. NO explanations, comments about the vulnerability, or security notes" >> /tmp/copilot_prompt.txt
+                    echo "7. NO line numbers or prefixes" >> /tmp/copilot_prompt.txt
+                    echo "8. Start directly with the code content" >> /tmp/copilot_prompt.txt
+                    echo "9. PRESERVE EXACT INDENTATION - if original has 4 spaces, use 4 spaces" >> /tmp/copilot_prompt.txt
+                    echo "10. Response must be syntactically complete - test that all braces match!" >> /tmp/copilot_prompt.txt
                     
                     # Generate AI fix using GitHub Models API
                     echo "📝 Security fix prompt preview:"
