@@ -62,7 +62,7 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   // Only start local server if not testing against a deployed URL
-  webServer: process.env.PLAYWRIGHT_BASE_URL?.includes('azurestaticapps.net') ? undefined : 
+  webServer: process.env.PLAYWRIGHT_BASE_URL?.match(/^https?:\/\/([a-zA-Z0-9-]+\.)*azurestaticapps\.net(:\d+)?(\/.*)?$/) ? undefined : 
     process.env.CI ? undefined : {
       command: 'npm run dev',
       url: 'http://localhost:5173',
