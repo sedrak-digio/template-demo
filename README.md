@@ -109,6 +109,12 @@ tests/
 
 ## Documentation
 
+### Project Documentation
+- [Project Summary](./docs/PROJECT-SUMMARY.md) - Complete project overview
+- [Security Automation](./docs/SECURITY-AUTOMATION.md) - AI-powered security pipeline
+- [Branch Protection](./docs/BRANCH-PROTECTION.md) - PR protection setup
+
+### External Documentation
 - [Mantine Components](https://mantine.dev/core/getting-started/)
 - [Playwright Testing](https://playwright.dev/docs/intro)
 - [Vite Configuration](https://vitejs.dev/config/)
