@@ -8,9 +8,11 @@ import QuizGame from "./components/QuizGame";
 import UserInput from "./components/UserInput/UserInput";
 import FileViewer from "./components/FileViewer/FileViewer";
 import RegexValidator from "./components/RegexValidator/RegexValidator";
+import AboutMe from "./components/AboutMe/AboutMe";
+import Experiences from "./components/Experiences/Experiences";
 
 // Optional: Import icons for the tabs for a nicer UI
-import { IconUserSearch, IconBulb, IconAlertTriangle, IconFile, IconRegex } from '@tabler/icons-react';
+import { IconUserSearch, IconBulb, IconAlertTriangle, IconFile, IconRegex, IconUser, IconTimeline } from '@tabler/icons-react';
 
 
 export default function App() {
@@ -44,6 +46,12 @@ export default function App() {
               <Tabs.Tab value="regex-validator" leftSection={<IconRegex size={16} />}>
                 Regex Test
               </Tabs.Tab>
+              <Tabs.Tab value="about-me" leftSection={<IconUser size={16} />}>
+                About Me
+              </Tabs.Tab>
+              <Tabs.Tab value="experiences" leftSection={<IconTimeline size={16} />}>
+                Experiences
+              </Tabs.Tab>
             </Tabs.List>
 
             {/* The content panel for the "Guess who?" tab */}
@@ -69,6 +77,16 @@ export default function App() {
             {/* The content panel for the "Regex Validator" tab */}
             <Tabs.Panel value="regex-validator" pt="xs">
               <RegexValidator onValidate={(input, result) => console.log('Validation:', input, result)} />
+            </Tabs.Panel>
+
+            {/* The content panel for the "About Me" tab */}
+            <Tabs.Panel value="about-me" pt="xs">
+              <AboutMe />
+            </Tabs.Panel>
+
+            {/* The content panel for the "Experiences" tab */}
+            <Tabs.Panel value="experiences" pt="xs">
+              <Experiences />
             </Tabs.Panel>
           </Tabs>
         </Stack>
